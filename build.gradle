@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+}
+
+group 'com.tfc'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    implementation 'com.github.fesh0r:fernflower:-SNAPSHOT'
+    
+    // https://mvnrepository.com/artifact/org.apache.bcel/bcel
+    compile group: 'org.apache.bcel', name: 'bcel', version: '6.0'
+}
