@@ -9,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Scanner;
 
 public class FlameLauncher {
 	private static final String dir = System.getProperty("user.dir");
@@ -17,18 +18,41 @@ public class FlameLauncher {
 	
 	public static final FlameLoader loader = new FlameLoader();
 	
-	public static final TextArea field = new TextArea() {
-		@Override
-		public void append(String str) {
-			String pattern = "hh:mm:ss";
-			SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-			//https://www.edureka.co/blog/date-format-in-java/#:~:text=Creating%20A%20Simple%20Date%20Format,-A%20SimpleDateFormat%20is&text=String%20pattern%20%3D%20%22yyyy%2DMM,for%20formatting%20and%20parsing%20dates.
-			super.append("["+simpleDateFormat.format(new Date())+"] "+str);
-		}
-	};
+	public static final FlameTextArea field = new FlameTextArea();
+
 	public static void main(String[] args) {
 		JFrame frame=null;
-		if (args[args.length-1].equals("flame_log")||true) {
+		File flame_config = new File(dir+"\\flame_config\\flamemc.txt");
+		boolean log = false;
+		String main_class = "net.minecraft.client.main.Main";
+		if (!flame_config.exists()) {
+			try {
+				flame_config.getParentFile().mkdirs();
+				flame_config.createNewFile();
+				FileWriter writer = new FileWriter(flame_config);
+				writer.write("log:false\n");
+				writer.write("main_class:net.minecraft.client.main.Main");
+				writer.close();
+			} catch (Throwable err) {
+				logError(err);
+			}
+		}
+		try {
+			Scanner sc = new Scanner(flame_config);
+			while (sc.hasNextLine()) {
+				String source_line = sc.nextLine();
+				String line = source_line.toLowerCase();
+				if (line.startsWith("log:")) {
+					log = Boolean.parseBoolean(line.replace("log:", ""));
+				} else if (line.startsWith("main_class:")) {
+					main_class = source_line.substring("main_class:".length());
+				}
+			}
+			sc.close();
+		} catch (Throwable err) {
+			logError(err);
+		}
+		if (log) {
 			frame=new JFrame("Flame MC log");
 			frame.add(field);
 			frame.setSize(1000, 1000);
@@ -36,19 +60,24 @@ public class FlameLauncher {
 		}
 		try {
 			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLauncher"));
-			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLoader"));
-			try {
-				lockedClasses.add(Class.forName("net.fabricmc.loader.launch.knot.KnotClient"));
-			} catch (Throwable ignored) {}
+			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLauncher"));
+			lockedClasses.add(Class.forName("dbn"));
 		} catch (Throwable ignored) {}
 		try {
-			field.setText("Startup Flame\n");
-			FlameLoader versionLoader = new FlameLoader();
+			field.append("Startup Flame\n");
+			field.append("Set Version Loader Path\n");
+			try {
+				loader.setPath(dir + "\\versions\\1.15.2-flame\\1.15.2-flame.jar");
+				loader.setParent(FlameLauncher.class.getClassLoader());
+			} catch (Throwable err) {
+				logError(err);
+			}
+			field.append("Set Mod Loader path\n");
+			FlameLoader modLoader = new FlameLoader();
 			field.append("Dir:" + dir + "\n");
-			versionLoader.setPath(dir + "\\versions\\1.15.2-flame\\1.15.2-flame.jar");
-			field.append("Set version loader path to: " + dir + "\\versions\\1.15.2-flame\n");
-			field.append("File exists:" + new File(dir + "\\versions\\1.15.2-flame").exists() + "\n");
-			loader.addLoader(versionLoader);
+			modLoader.setPath(dir + "\\flame_mods", true);
+			field.append("Set mod loader path to: " + dir + "\\flame_mods\n");
+			loader.addLoader(modLoader);
 			field.append("Locking FlameMC classes\n");
 			lockedClasses.forEach(c->{
 				field.append(c.getName()+'\n');
@@ -56,18 +85,33 @@ public class FlameLauncher {
 			});
 			field.append("Locked FlameMC classes\n");
 			field.append("Game arguments: "+Arrays.toString(args)+"\n");
-			Class<?> mainClass = loader.load("net.fabricmc.loader.launch.knot.KnotClient", false);
+			Class<?> mainClass = loader.load(main_class, false);
 			if (mainClass != null) {
 				field.append("Got main class\n");
 				Method main = mainClass.getMethod("main", String[].class);
-				if (main != null)
-					if (args != null) main.invoke(null, (Object) args);
-					else throw new Exception("Game args are missing???");
-				else throw new Exception("Main method is missing???");
+				if (args != null) main.invoke(null, (Object) args);
+				else throw new Exception("Game args are missing???");
 			} else throw new Exception("Main class is missing???");
 		} catch (Throwable err) {
 			logError(err);
+			exit(err,frame,log);
 		}
+		exit(null,frame,log);
+	}
+	
+	public static void logError(Throwable err) {
+		StringBuilder s = new StringBuilder();
+		field.append("\n\n");
+		s.append("Flame encountered an error:\n");
+		s.append(err.getClass().getName()).append(": ").append(err.getLocalizedMessage()).append("\n");
+		for (StackTraceElement element : err.getStackTrace()) {
+			s.append(element.toString()).append("\n");
+		}
+		field.append(s.toString());
+		err.getStackTrace();
+	}
+	
+	private static void exit(Throwable err, JFrame frame, boolean log) {
 		try {
 			File fi = new File(dir + "\\flame_logs");
 			if (!fi.exists()) fi.mkdirs();
@@ -78,17 +122,7 @@ public class FlameLauncher {
 			writer.close();
 		} catch (Throwable ignored) {
 		}
-		if (args[args.length-1].equals("flame_log")||true) {
-			frame.dispose();
-		}
-	}
-	
-	public static void logError(Throwable err) {
-		field.append("\nFlame encountered an error\n");
-		field.append(err.getClass().getName() + ": " + err.getLocalizedMessage() + "\n");
-		for (StackTraceElement element : err.getStackTrace()) {
-			field.append(element.toString() + "\n");
-		}
-		err.getStackTrace();
+		if (log) frame.dispose();
+		if (err != null) throw new RuntimeException(err);
 	}
 }
