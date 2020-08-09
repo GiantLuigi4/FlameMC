@@ -193,7 +193,7 @@ public class FlameLoader extends ClassLoader {
 		if (c==null) {
 			try {
 				c = this.getClass().getClassLoader().loadClass(name);
-				append(name, c);
+					append(name, c);
 			} catch (Throwable ignored) {
 			}
 		}
