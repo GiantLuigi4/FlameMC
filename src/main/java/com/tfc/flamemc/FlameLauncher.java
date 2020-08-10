@@ -4,13 +4,15 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Scanner;
+import java.util.*;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 public class FlameLauncher {
 	private static final String dir = System.getProperty("user.dir");
@@ -43,6 +45,26 @@ public class FlameLauncher {
 				logError(err);
 			}
 		}
+		
+		field.append("Set Mod Loader path\n");
+		FlameLoader modLoader = new FlameLoader();
+		
+		field.append("Discovering Flame Mods\n");
+		try {
+			for (File fi:Objects.requireNonNull(new File(dir + "\\flame_mods").listFiles())) {
+				if (fi.exists() && (fi.getName().endsWith(".zip") || fi.getName().endsWith(".jar"))) {
+					if (fi.getName().endsWith(".jar")) {
+						JarFile file = new JarFile(fi);
+						JarEntry entry = file.getJarEntry("resources/"+fi.getName().replace(".jar","")+"/main.class");
+						loader.load(entry.getName(),false);
+					} else {
+						ZipFile file = new ZipFile(fi);
+						ZipEntry entry = file.getEntry("resources/"+fi.getName().replace(".jar","")+"/main.class");
+						loader.load(entry.getName(),false);
+					}
+				}
+			}
+		} catch (Throwable ignored) {}
 		try {
 			Scanner sc = new Scanner(flame_config);
 			while (sc.hasNextLine()) {
@@ -92,8 +114,6 @@ public class FlameLauncher {
 			} catch (Throwable err) {
 				logError(err);
 			}
-			field.append("Set Mod Loader path\n");
-			FlameLoader modLoader = new FlameLoader();
 			field.append("Dir:" + dir + "\n");
 			modLoader.setPath(dir + "\\flame_mods", true);
 			field.append("Set mod loader path to: " + dir + "\\flame_mods\n");
