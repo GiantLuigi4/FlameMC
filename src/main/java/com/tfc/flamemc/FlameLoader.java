@@ -1,6 +1,6 @@
 package com.tfc.flamemc;
 
-import jdk.internal.loader.BootLoader;
+//import jdk.internal.loader.BootLoader;
 import org.apache.bcel.util.ClassPath;
 
 import java.io.File;
@@ -126,10 +126,10 @@ public class FlameLoader extends ClassLoader {
 		classes.put(name, clazz);
 	}
 	
-	@Override
-	protected Class<?> findClass(String moduleName, String name) {
-		return this.findClass(moduleName + "." + name);
-	}
+//	@Override
+//	protected Class<?> findClass(String moduleName, String name) {
+//		return this.findClass(moduleName + "." + name);
+//	}
 	
 	private final ArrayList<String> unsafeMerging = new ArrayList<>();
 	
@@ -157,9 +157,9 @@ public class FlameLoader extends ClassLoader {
 		if (url == null && this.owner != null) {
 			url = this.owner.getResource(name);
 		}
-		if (url == null) {
-			url = BootLoader.findResource(name);
-		}
+//		if (url == null) {
+//			url = BootLoader.findResource(name);
+//		}
 		if (url == null) {
 			url = this.findResource(name);
 		}

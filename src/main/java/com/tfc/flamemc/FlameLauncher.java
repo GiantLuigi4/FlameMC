@@ -64,6 +64,20 @@ public class FlameLauncher {
 		field.append("Set mod loader path to: " + dir + "\\flame_mods\n");
 		loader.addLoader(modLoader);
 		
+		try {
+			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLauncher"));
+			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLoader"));
+			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameTextArea"));
+			lockedClasses.add(Class.forName("com.tfc.flamemc.IFlameMod"));
+		} catch (Throwable ignored) {
+		}
+		field.append("Locking FlameMC classes\n");
+		lockedClasses.forEach(c -> {
+			field.append(c.getName() + '\n');
+			loader.append(c.getName(), c);
+		});
+		field.append("Locked FlameMC classes\n");
+		
 		field.append("Discovering Flame Mods\n");
 		try {
 			for (File fi:Objects.requireNonNull(new File(dir + "\\flame_mods").listFiles())) {
@@ -136,29 +150,16 @@ public class FlameLauncher {
 			frame.setSize(1000, 1000);
 			frame.setVisible(true);
 		}
+		loader.blacklistName("h");
+		loader.blacklistName("djy");
+		loader.blacklistName("djy$a");
+		loader.blacklistName("djy$b");
+		loader.blacklistName("djy$c");
+		loader.blacklistName("djy$d");
+		loader.blacklistName("com.mojang.authlib.properties.PropertyMap");
+		loader.blacklistName("dbz");
+		loader.blacklistName("cxh");
 		try {
-			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLauncher"));
-			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLoader"));
-			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameTextArea"));
-			lockedClasses.add(Class.forName("com.tfc.flamemc.IFlameMod"));
-		} catch (Throwable ignored) {
-		}
-//		loader.blacklistName("h");
-//		loader.blacklistName("djy");
-//		loader.blacklistName("djy$a");
-//		loader.blacklistName("djy$b");
-//		loader.blacklistName("djy$c");
-//		loader.blacklistName("djy$d");
-//		loader.blacklistName("com.mojang.authlib.properties.PropertyMap");
-//		loader.blacklistName("dbz");
-//		loader.blacklistName("cxh");
-		try {
-			field.append("Locking FlameMC classes\n");
-			lockedClasses.forEach(c -> {
-				field.append(c.getName() + '\n');
-				loader.append(c.getName(), c);
-			});
-			field.append("Locked FlameMC classes\n");
 			field.append("Game arguments: " + Arrays.toString(args) + "\n");
 			Class<?> mainClass = Class.forName(main_class, false, loader);
 			field.append("Got main class\n");
