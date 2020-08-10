@@ -2,6 +2,7 @@ plugins {
     id 'java'
 }
 
+apply plugin: 'maven'
 group 'com.tfc'
 version '1.0-SNAPSHOT'
 

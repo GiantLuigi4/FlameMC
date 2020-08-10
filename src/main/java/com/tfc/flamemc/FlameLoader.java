@@ -28,6 +28,7 @@ public class FlameLoader extends ClassLoader {
 					}
 				});
 				if (toRemove.get() != null) vc.remove(toRemove.get());
+				vc.add(c);
 			} catch (Throwable ignored) {
 			}
 			try {
@@ -39,6 +40,7 @@ public class FlameLoader extends ClassLoader {
 					}
 				});
 				if (toRemove.get() != null) vc.remove(toRemove.get());
+				vc.add(c);
 			} catch (Throwable ignored) {
 			}
 			return c;

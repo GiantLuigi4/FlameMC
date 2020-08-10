@@ -26,6 +26,8 @@ public class FlameLauncher {
 	protected static boolean log_bytecode = false;
 	
 	public static void main(String[] args) {
+		field.append("Startup Flame\n");
+		
 		JFrame frame = null;
 		File flame_config = new File(dir + "\\flame_config\\flamemc.txt");
 		boolean log = false;
@@ -46,21 +48,65 @@ public class FlameLauncher {
 			}
 		}
 		
-		field.append("Set Mod Loader path\n");
+		field.append("Set Version Loader Path\n");
+		try {
+			loader.setPath(dir + "\\versions\\1.15.2-flame\\1.15.2-flame.jar");
+			loader.setParent(FlameLauncher.class.getClassLoader());
+		} catch (Throwable err) {
+			logError(err);
+		}
+		
+		field.append("Create Mod Loader\n");
 		FlameLoader modLoader = new FlameLoader();
+		field.append("Dir:" + dir + "\n");
+		field.append("Set Mod Loader path\n");
+		modLoader.setPath(dir + "\\flame_mods", true);
+		field.append("Set mod loader path to: " + dir + "\\flame_mods\n");
+		loader.addLoader(modLoader);
 		
 		field.append("Discovering Flame Mods\n");
 		try {
 			for (File fi:Objects.requireNonNull(new File(dir + "\\flame_mods").listFiles())) {
 				if (fi.exists() && (fi.getName().endsWith(".zip") || fi.getName().endsWith(".jar"))) {
-					if (fi.getName().endsWith(".jar")) {
-						JarFile file = new JarFile(fi);
-						JarEntry entry = file.getJarEntry("resources/"+fi.getName().replace(".jar","")+"/main.class");
-						loader.load(entry.getName(),false);
-					} else {
-						ZipFile file = new ZipFile(fi);
-						ZipEntry entry = file.getEntry("resources/"+fi.getName().replace(".jar","")+"/main.class");
-						loader.load(entry.getName(),false);
+					try {
+						Class<?> c = null;
+						if (fi.getName().endsWith(".jar")) {
+							JarFile file = new JarFile(fi);
+							Enumeration<JarEntry> entries = file.entries();
+							while (entries.hasMoreElements()) {
+								JarEntry entry = entries.nextElement();
+								String name = entry.getName();
+								if (name.startsWith("entries/"+fi.getName().replace(".jar","")+"/") && name.endsWith(".class")) {
+									c = loader.load(entry.getName().replace(".class", "").replace("/","."),true);
+									((IFlameMod)c.newInstance()).init(args);
+//									Method main = c.getMethod("main", String[].class);
+//									main.invoke(c.newInstance(), (Object) args);
+								}
+							}
+						} else {
+							ZipFile file = new ZipFile(fi);
+							Enumeration<ZipEntry> entries = (Enumeration<ZipEntry>) file.entries();
+							while (entries.hasMoreElements()) {
+								ZipEntry entry = entries.nextElement();
+								String name = entry.getName();
+								if (name.startsWith("entries/"+fi.getName().replace(".zip","")+"/") && name.endsWith(".class")) {
+									c = loader.load(entry.getName().replace(".class", "").replace("/","."),true);
+//									Method main = c.getMethod("main", String[].class);
+//									main.invoke(c.newInstance(), (Object) args);
+									((IFlameMod)c.newInstance()).init(args);
+								}
+							}
+						}
+						if (c == null) {
+							field.append("Main class for mod:" + fi.getName()+" does not appear to exist.\n");
+						}
+						for (Method m:c.getMethods()) {
+							field.append(m.getName()+"\n");
+						}
+					} catch (Throwable err) {
+						field.append("Something went wrong while initializing mod: "+fi.getName()+"\n");
+						logError(err);
+						logError(err.getCause());
 					}
 				}
 			}
@@ -94,30 +140,19 @@ public class FlameLauncher {
 			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLauncher"));
 			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLoader"));
 			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameTextArea"));
+			lockedClasses.add(Class.forName("com.tfc.flamemc.IFlameMod"));
 		} catch (Throwable ignored) {
 		}
-		loader.blacklistName("h");
-		loader.blacklistName("djy");
-		loader.blacklistName("djy$a");
-		loader.blacklistName("djy$b");
-		loader.blacklistName("djy$c");
-		loader.blacklistName("djy$d");
-		loader.blacklistName("com.mojang.authlib.properties.PropertyMap");
-		loader.blacklistName("dbz");
-		loader.blacklistName("cxh");
+//		loader.blacklistName("h");
+//		loader.blacklistName("djy");
+//		loader.blacklistName("djy$a");
+//		loader.blacklistName("djy$b");
+//		loader.blacklistName("djy$c");
+//		loader.blacklistName("djy$d");
+//		loader.blacklistName("com.mojang.authlib.properties.PropertyMap");
+//		loader.blacklistName("dbz");
+//		loader.blacklistName("cxh");
 		try {
-			field.append("Startup Flame\n");
-			field.append("Set Version Loader Path\n");
-			try {
-				loader.setPath(dir + "\\versions\\1.15.2-flame\\1.15.2-flame.jar");
-				loader.setParent(FlameLauncher.class.getClassLoader());
-			} catch (Throwable err) {
-				logError(err);
-			}
-			field.append("Dir:" + dir + "\n");
-			modLoader.setPath(dir + "\\flame_mods", true);
-			field.append("Set mod loader path to: " + dir + "\\flame_mods\n");
-			loader.addLoader(modLoader);
 			field.append("Locking FlameMC classes\n");
 			lockedClasses.forEach(c -> {
 				field.append(c.getName() + '\n');
