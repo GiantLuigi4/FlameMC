@@ -1,38 +1,87 @@
 package com.tfc.flamemc;
 
-//import jdk.internal.loader.BootLoader;
 import org.apache.bcel.util.ClassPath;
 
 import java.io.File;
 import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLClassLoader;
+import java.net.URLStreamHandlerFactory;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 //MMD Discord:https://discord.mcmoddev.com/
 //Message:https://discordapp.com/channels/176780432371744769/421377435041267712/723593029583241336
 //Most stuff I know about class loaders is from fabric.
-public class FlameLoader extends ClassLoader {
+public class FlameLoader extends URLClassLoader {
+	public FlameLoader(URL[] urls, ClassLoader parent) {
+		super(urls, parent);
+		try {
+			Field loader = this.getClass().getClass().getDeclaredField("classLoader");
+			loader.set(this.getClass(),this);
+		} catch (Throwable err) {}
+	}
+	
+	public FlameLoader() throws MalformedURLException {
+		super(new URL[] {new File(dir).toURL()});
+		try {
+			Field loader = this.getClass().getClass().getDeclaredField("classLoader");
+			loader.set(this.getClass(),this);
+		} catch (Throwable err) {}
+	}
+	
+	public FlameLoader(URL[] urls) {
+		super(urls);
+		try {
+			Field loader = this.getClass().getClass().getDeclaredField("classLoader");
+			loader.set(this.getClass(),this);
+		} catch (Throwable err) {}
+	}
+	
+	public FlameLoader(URL[] urls, ClassLoader parent, URLStreamHandlerFactory factory) {
+		super(urls, parent, factory);
+		try {
+			Field loader = this.getClass().getClass().getDeclaredField("classLoader");
+			loader.set(this.getClass(),this);
+		} catch (Throwable err) {}
+	}
+	
 	private Class<?> define(String name, byte[] bytes) {
 		try {
 			Class<?> c = this.defineClass(name, bytes, 0, bytes.length);
-//			try {
-//				this.getClass().getClassLoader().getClass().getMethod("defineClass", String.class, byte[].class, int.class, int.class).invoke(this.getClass().getClassLoader(),name, bytes, 0, bytes.length);
-//			} catch (Throwable ignored) {}
 			try {
-				AtomicReference<Class<?>> toRemove = new AtomicReference<>(null);
-				Vector<Class<?>> vc = ((Vector<Class<?>>) (this.getClass().getClassLoader().getClass().getField("classes").get(this.getClass().getClassLoader())));
-				vc.forEach(c1 -> {
-					if (c1.getName().equals(c.getName())) {
-						toRemove.set(c1);
+				Vector<Class<?>> vc = ((Vector<Class<?>>) (this.getClass().getClassLoader().getClass().getDeclaredField("classes").get(this.getClass().getClassLoader())));
+				try {
+					AtomicReference<Class<?>> toRemove = new AtomicReference<>(null);
+					vc.forEach(c1 -> {
+						if (c1.getName().equals(c.getName())) {
+							toRemove.set(c1);
+						}
+					});
+					if (toRemove.get() != null) vc.remove(toRemove.get());
+				} catch (Throwable err) {
+//					FlameLauncher.logError(err);
+				}
+//				vc.add(c);
+				ArrayList<Class<?>> toRemove_list = new ArrayList<>();
+				vc.forEach(c1->{
+					if (!c1.getName().contains(".")) {
+						toRemove_list.add(c1);
+					} else if (c1.getName().startsWith("org.apache") && !c1.getName().contains("bcel")) {
+						toRemove_list.add(c1);
+					} else if (c1.getName().startsWith("com.google")) {
+						toRemove_list.add(c1);
 					}
 				});
-				if (toRemove.get() != null) vc.remove(toRemove.get());
-				vc.add(c);
+				toRemove_list.forEach(vc::remove);
+//				vc.add(c);
 			} catch (Throwable ignored) {
+//				FlameLauncher.logError(ignored);
 			}
 			try {
-				AtomicReference<Class<?>> toRemove = new AtomicReference<>(null);
+//				AtomicReference<Class<?>> toRemove = new AtomicReference<>(null);
 				Vector<Class<?>> vc = ((Vector<Class<?>>) (this.getClass().getField("classes").get(this)));
 //				vc.forEach(c1 -> {
 //					if (c1.getName().equals(c.getName())) {
@@ -43,14 +92,25 @@ public class FlameLoader extends ClassLoader {
 				vc.clear();
 			} catch (Throwable ignored) {
 			}
-			if (!this.classes_map.containsKey(name)) append(name,c);
+			try {
+				((Vector<Class<?>>)this.getClass().getClassLoader().getClass().getField("classes").get(this.getClass().getClassLoader())).add(c);
+			} catch (Throwable err) {
+				try {
+					this.getClass().getClassLoader().getClass().getMethod("defineClass", String.class, byte[].class, int.class, int.class).invoke(this.getClass().getClassLoader(),name, bytes, 0, bytes.length);
+				} catch (Throwable ignored) {}
+			}
+			if (!this.classMap.containsKey(name)) append(name,c);
 			return c;
 		} catch (Throwable err) {
 			return this.trimAndDefine(name, bytes);
 		}
 	}
 	
-	private final HashMap<String, Class<?>> classes_map = new HashMap<>();
+	private final HashMap<String, Class<?>> classMap = new HashMap<>();
+	
+	public HashMap<String, Class<?>> getClassMap() {
+		return (HashMap<String, Class<?>>) classMap.clone();
+	}
 	
 	private static final String dir = System.getProperty("user.dir");
 	
@@ -66,6 +126,16 @@ public class FlameLoader extends ClassLoader {
 			FlameLauncher.logError(err);
 		}
 		checkAllFiles = false;
+		try {
+			Field classPaths = URLClassLoader.class.getDeclaredField("ucp");
+			Field urls1 = Class.forName("sun.misc.URLClassPath").getDeclaredField("urls");
+			Field urls2 = Class.forName("sun.misc.URLClassPath").getDeclaredField("path");
+			((Stack<URL>)urls1.get(classPaths.get(this))).clear();
+			((ArrayList<URL>)urls2.get(classPaths.get(this))).clear();
+		} catch (Throwable ignored) {}
+		try {
+			super.addURL(new File(path).toURL());
+		} catch (Throwable ignored) {}
 	}
 	
 	private boolean checkAllFiles = false;
@@ -80,6 +150,20 @@ public class FlameLoader extends ClassLoader {
 			FlameLauncher.logError(err);
 		}
 		this.checkAllFiles = checkAllFiles;
+		try {
+			Field classPaths = URLClassLoader.class.getDeclaredField("ucp");
+			Field urls1 = Class.forName("sun.misc.URLClassPath").getDeclaredField("urls");
+			Field urls2 = Class.forName("sun.misc.URLClassPath").getDeclaredField("path");
+			((Stack<URL>)urls1.get(classPaths.get(this))).clear();
+			((ArrayList<URL>)urls2.get(classPaths.get(this))).clear();
+		} catch (Throwable ignored) {}
+		if (checkAllFiles) {
+			for (File fi:new File(path).listFiles()) {
+				try {
+					super.addURL(fi.toURL());
+				} catch (Throwable ignored) {}
+			}
+		}
 	}
 	
 	private final ArrayList<FlameLoader> loaders = new ArrayList<>();
@@ -113,7 +197,7 @@ public class FlameLoader extends ClassLoader {
 				i++;
 //				FlameMain.field.append("Loader:"+i+"/"+loaders.size()+"\n");
 				if (c != null) {
-					if (!classes_map.containsKey(name)) append(name, c);
+					append(name,c);
 					return c;
 				}
 			} catch (Throwable err) {
@@ -124,7 +208,11 @@ public class FlameLoader extends ClassLoader {
 	}
 	
 	public void append(String name, Class<?> clazz) {
-		classes_map.put(name, clazz);
+		if (!classMap.containsKey(name)) classMap.put(name, clazz);
+	}
+	
+	public void append(String name, Class<?> clazz,boolean honest) {
+		if (!classMap.containsKey(name)) classMap.put(name, clazz);
 	}
 	
 //	@Override
@@ -143,30 +231,55 @@ public class FlameLoader extends ClassLoader {
 		Objects.requireNonNull(name);
 		URL url = null;
 		try {
-			url = new URL("jar:file:/" + path + "!/" + name);
-		} catch (Throwable ignored) {
-		}
-		if (this.parent != null) {
-			url = this.parent.getResource(name);
-		}
-		if (url == null && this.getParent() != null) {
-			url = this.getParent().getResource(name);
-		}
-		if (url == null && this.parent != null) {
-			url = this.parent.getResource(name);
-		}
-		if (url == null && this.owner != null) {
-			url = this.owner.getResource(name);
+			if (this.checkAllFiles) {
+				for (File fi : Objects.requireNonNull(new File(this.path).listFiles())) {
+					if (url==null) {
+						url = new URL("jar:file:/" + fi.getPath() + "!/" + name);
+						try {
+							FlameLauncher.field.append(url.toString()+"\n");
+							InputStream stream = url.openStream();
+							FlameLauncher.field.append("Valid url\n");
+							try{stream.close();}catch(Throwable ignored){}
+						} catch (Throwable err) {
+							url = null;
+						}
+					}
+				}
+			} else {
+				url = new URL("jar:file:/" + path + "!/" + name);
+				try {
+					FlameLauncher.field.append(url.toString()+"\n");
+					InputStream stream = url.openStream();
+					FlameLauncher.field.append("Valid url\n");
+					try{stream.close();}catch(Throwable ignored){}
+				} catch (Throwable err) {
+					url = null;
+				}
+			}
+		} catch (Throwable ignored) {}
+		if (url == null) {
+			if (this.parent != null) {
+				url = this.parent.getResource(name);
+			}
+			if (url == null && this.getParent() != null) {
+				url = this.getParent().getResource(name);
+			}
+			if (url == null && this.parent != null) {
+				url = this.parent.getResource(name);
+			}
+			if (url == null && this.owner != null) {
+				url = this.owner.getResource(name);
+			}
+			if (url == null) {
+				url = this.findResource(name);
+				if (url == null) {
+					url = this.getClass().getClassLoader().getResource(name);
+				}
+			}
 		}
 //		if (url == null) {
 //			url = BootLoader.findResource(name);
 //		}
-		if (url == null) {
-			url = this.findResource(name);
-		}
-		if (url == null) {
-			url = this.getClass().getClassLoader().getResource(name);
-		}
 		
 		return url;
 	}
@@ -177,220 +290,379 @@ public class FlameLoader extends ClassLoader {
 		blacklisted_names.add(name);
 	}
 	
+	public String getPath() {
+		return path;
+	}
+	
+	public boolean isCheckAllFiles() {
+		return checkAllFiles;
+	}
+	
+	private int superLoad = 0;
+	
 	@Override
 	public Class<?> loadClass(String name) {
-		FlameLauncher.field.append("Finding and loading class:" + name + "\n");
-		Class<?> c1 = findClassShort(name);
-		if (c1 != null) return c1;
-		boolean overriden = false;
-		for (String file : unsafeMerging) {
-			for (FlameLoader loader : loaders) {
+//		if (!name.startsWith("com.tfc.flame")) {
+//			try {
+//				return parent.loadClass(name);
+//			} catch (Throwable ignored) {}
+//		}
+		if (superLoad==0) {
+			FlameLauncher.field.append("Finding and loading class:" + name + "\n");
+			Class<?> c1 = findClassShort(name);
+			if (c1 != null) return c1;
+			if (name.startsWith("org.apache")||name.startsWith("com.google")) {
 				try {
-					String path1 = loader.path + "\\" + file;
-					ClassPath path2 = new ClassPath(path1);
-					InputStream stream = path2.getInputStream(name);
-					stream.close();
-					overriden = true;
-				} catch (Throwable ignored) {
-				}
-			}
-		}
-		for (String name_test : blacklisted_names) {
-			try {
-				if (name.equals(name_test)) {
-					Class<?> c = this.getClass().getClassLoader().loadClass(name);
-					append(name, c);
+					Class<?> c = parent.loadClass(name);
+					resolveClass(c);
+					append(name,c,true);
 					return c;
-				}
-			} catch (Throwable err) {
-				return null;
+				} catch (Throwable ignored) {}
 			}
-		}
-		if (!overriden) {
-			if (!checkAllFiles) {
+			boolean overridden = false;
+			for (String file : unsafeMerging) {
+				for (FlameLoader loader : loaders) {
+					try {
+						String path1 = loader.path + "\\" + file;
+						if (loader.checkAllFiles) {
+							for (File fi:Objects.requireNonNull(new File(loader.path).listFiles())) {
+								ClassPath path2 = new ClassPath(fi.getPath());
+								InputStream stream = path2.getInputStream(name);
+								stream.close();
+								overridden = true;
+							}
+						} else {
+							ClassPath path2 = new ClassPath(path1);
+							InputStream stream = path2.getInputStream(name);
+							stream.close();
+							overridden = true;
+						}
+					} catch (Throwable ignored) {
+					}
+				}
+			}
+			for (String name_test : blacklisted_names) {
 				try {
-					InputStream stream1 = owner.getResourceAsStream(name.replace(".", "/") + ".class");
-					Class<?> c = defineFromStream(name, stream1);
-					if (c != null) {
-						append(name, c);
+					if (name.equals(name_test)) {
+						Class<?> c = parent.loadClass(name);
+						append(name, c, true);
 						return c;
 					}
-					throw new Exception();
-				} catch (Throwable ignored) {
+				} catch (Throwable err) {
+					try {
+						superLoad+=1;
+						Class<?> c = super.loadClass(name, true);
+						superLoad-=1;
+						if (c != null) {
+							append(name, c);
+							return c;
+						}
+						throw new Exception();
+					} catch (Throwable err3) {
+						superLoad-=1;
+						FlameLauncher.logError(err3);
+					}
 				}
 			}
-		}
-		if (!name.startsWith("org.apache") && !name.startsWith("com.google")) {
-			Class<?> c = null;
-			try {
-				InputStream stream1 = this.parent.getResourceAsStream(name);
-				c = defineFromStream(name, stream1);
-				if (c != null) {
-					append(name, c);
-					return c;
+			if (!overridden) {
+				if (!checkAllFiles && owner!=null) {
+					try {
+						InputStream stream1 = owner.getResourceAsStream(name.replace(".", "/") + ".class");
+						Class<?> c = defineFromStream(name, stream1);
+						if (c != null) {
+							append(name, c);
+							return c;
+						}
+						throw new Exception();
+					} catch (Throwable err) {
+						try {
+							InputStream stream1 = parent.getResourceAsStream(name.replace(".", "/") + ".class");
+							Class<?> c = defineFromStream(name, stream1);
+							if (c != null) {
+								append(name, c);
+								return c;
+							}
+							throw new Exception();
+						} catch (Throwable ignored) {
+						}
+					}
+				} else {
+					try {
+						InputStream stream1 = this.getResourceAsStream(name.replace(".", "/") + ".class");
+						Class<?> c = defineFromStream(name, stream1);
+						if (c != null) {
+							append(name, c);
+							return c;
+						}
+						throw new Exception();
+					} catch (Throwable err) {
+						try {
+							InputStream stream1 = parent.getResourceAsStream(name.replace(".", "/") + ".class");
+							Class<?> c = defineFromStream(name, stream1);
+							if (c != null) {
+								append(name, c);
+								return c;
+							}
+							throw new Exception();
+						} catch (Throwable ignored) {
+						}
+					}
 				}
-				throw new Exception();
-			} catch (Throwable err) {
+			}
+			if ((!name.startsWith("org.apache") && !name.startsWith("com.google"))) {
+				Class<?> c = null;
 				try {
-					InputStream stream1 = this.getResourceAsStream(name.replace(".", "/") + ".class");
+					InputStream stream1 = this.parent.getResourceAsStream(name);
 					c = defineFromStream(name, stream1);
 					if (c != null) {
 						append(name, c);
 						return c;
 					}
 					throw new Exception();
-				} catch (Throwable err2) {
+				} catch (Throwable err) {
 					try {
-						InputStream stream1 = owner.getResourceAsStream(name.replace(".", "/") + ".class");
+						InputStream stream1 = this.getResourceAsStream(name.replace(".", "/") + ".class");
 						c = defineFromStream(name, stream1);
 						if (c != null) {
 							append(name, c);
 							return c;
 						}
 						throw new Exception();
-					} catch (Throwable ignored) {
+					} catch (Throwable err2) {
+						try {
+							if (owner!=null) {
+								InputStream stream1 = owner.getResourceAsStream(name.replace(".", "/") + ".class");
+								c = defineFromStream(name, stream1);
+								if (c != null) {
+									append(name, c);
+									return c;
+								}
+								throw new Exception();
+							}
+						} catch (Throwable ignored) {
+						}
 					}
 				}
+			} else {
+				if (name.startsWith("org.apache"))
+					FlameLauncher.field.append("Ugh... apache... why don't you let me load you with FlameLoader?\n");
+				if (name.startsWith("com.google"))
+					FlameLauncher.field.append("Ugh... google... why don't you let me load you with FlameLoader?\n");
+				try {
+					Class<?> c = this.parent.loadClass(name);
+					append(name,c);
+					return c;
+				} catch (Throwable err) {}
 			}
-		} else {
-			if (name.startsWith("org.apache"))
-				FlameLauncher.field.append("Ugh... apache... why don't you let me load you with FlameLoader?");
-			if (name.startsWith("com.google"))
-				FlameLauncher.field.append("Ugh... google... why don't you let me load you with FlameLoader?");
-		}
-		try {
-			Class<?> c = super.loadClass(name, true);
-			if (c != null) {
-				append(name, c);
-				return c;
-			}
-			throw new Exception();
-		} catch (Throwable err3) {
-			FlameLauncher.logError(err3);
-		}
-		if (
-				!name.startsWith("java")
+			if (
+					!name.startsWith("java")
 //						&& !name.startsWith("joptsimple")
 //						&& !name.startsWith("com.mojang")
-//						&& !name.startsWith("com.google")
-//						&& !name.startsWith("org.apache")
+							&& !name.startsWith("com.google")
 //						&& !name.startsWith("io.netty")
 //						&& !name.startsWith("it.unimi")
-//						&& !name.startsWith("org.apache")
-		) {
-			Class<?> c = null;
-			Throwable error = null;
-			try {
-				if (checkAllFiles) {
-					boolean foundClass = false;
-					for (File fi : Objects.requireNonNull(new File(path).listFiles())) {
-						ClassPath path1 = new ClassPath(fi.getPath());
+							&& !name.startsWith("org.apache")
+			) {
+				Class<?> c = null;
+				Throwable error = null;
+				try {
+					if (checkAllFiles) {
+						boolean foundClass = false;
+						for (File fi : Objects.requireNonNull(new File(path).listFiles())) {
+							try {
+								ClassPath path1 = new ClassPath(fi.getPath());
+								InputStream stream1 = path1.getClassFile(name).getInputStream();
+								FlameLauncher.field.append("Loading Class:" + name + "\n");
+								try {
+									c = defineFromStream(name, stream1);
+									if (c == null)
+										throw new Exception("Failed to load class: " + name);
+									else foundClass = true;
+								} catch (Throwable err) {
+									try {
+										stream1.close();
+									} catch (Throwable ignored) {
+									}
+									FlameLauncher.field.append("Failed to find class: " + name + " in file: " + fi.getPath());
+									error = err;
+								}
+							} catch (Throwable err) {
+								FlameLauncher.field.append("Failed to find class: " + name + " in file: " + fi.getPath());
+							}
+						}
+						try {
+							if (!foundClass) {
+								if (parent != null && c == null) {
+									InputStream stream1 = this.parent.getResourceAsStream(name);
+									c = defineFromStream(name, stream1);
+									if (c == null) {
+										c = checkAdditionalLoaders(name);
+										if (c == null) c = findClassNoAdditional(name, false);
+									}
+								}
+								if  (parent!=null) {
+									try {
+										superLoad+=1;
+										c = super.loadClass(name, true);
+										superLoad-=1;
+										if (c != null) {
+											append(name, c);
+											return c;
+										}
+										throw new Exception();
+									} catch (Throwable err3) {
+										error=err3;
+										superLoad-=1;
+										FlameLauncher.logError(err3);
+									}
+								}
+							}
+						} catch (Throwable err) {
+							try {
+								superLoad+=1;
+								c = super.loadClass(name, true);
+								superLoad-=1;
+								if (c != null) {
+									append(name, c);
+									return c;
+								}
+								throw new Exception();
+							} catch (Throwable err3) {
+								error=err3;
+								superLoad-=1;
+								FlameLauncher.logError(err3);
+							}
+						}
+						if (c == null) c = this.checkAdditionalLoaders(name);
+					} else {
+						ClassPath path1 = new ClassPath(path);
 						InputStream stream1 = path1.getClassFile(name).getInputStream();
 						FlameLauncher.field.append("Loading Class:" + name + "\n");
 						try {
 							c = defineFromStream(name, stream1);
 							if (c == null)
 								throw new Exception("Failed to load class: " + name);
-							else foundClass = true;
 						} catch (Throwable err) {
-							try {
+							if (parent != null && c == null) {
+								try {
+									stream1.close();
+								} catch (Throwable ignored) {
+								}
+								try {
+									superLoad+=1;
+									c = super.loadClass(name, true);
+									superLoad-=1;
+									if (c != null) {
+										append(name, c);
+										return c;
+									}
+									throw new Exception();
+								} catch (Throwable err3) {
+									error=err3;
+									superLoad-=1;
+									FlameLauncher.logError(err3);
+								}
+								stream1 = this.parent.getResourceAsStream(name);
+								c = defineFromStream(name, stream1);
+								if (c == null) {
+									c = checkAdditionalLoaders(name);
+									if (c == null) c = findClassNoAdditional(name, false);
+								}
+								assert stream1 != null;
 								stream1.close();
-							} catch (Throwable ignored) {
 							}
 							error = err;
+							if (c == null) c = this.checkAdditionalLoaders(name);
 						}
 					}
-					try {
-						if (!foundClass) {
-//								if (parent != null && c == null) {
-//									InputStream stream1 = this.parent.getResourceAsStream(name);
-//									c = defineFromStream(name, stream1);
-//									if (c == null) {
-//										c = checkAdditionalLoaders(name);
-//										if (c == null) c = findClassNoAdditional(name, false);
-//									}
-//								}
-						}
-					} catch (Throwable err) {
-						error = err;
-					}
+				} catch (Throwable err) {
 					if (c == null) c = this.checkAdditionalLoaders(name);
-				} else {
-					ClassPath path1 = new ClassPath(path);
-					InputStream stream1 = path1.getClassFile(name).getInputStream();
-					FlameLauncher.field.append("Loading Class:" + name + "\n");
-					try {
-						c = defineFromStream(name, stream1);
-						if (c == null)
-							throw new Exception("Failed to load class: " + name);
-					} catch (Throwable err) {
-						if (parent != null && c == null) {
-							try {
-								stream1.close();
-							} catch (Throwable ignored) {
+					if (c == null) {
+						try {
+							superLoad+=1;
+							c = super.loadClass(name, true);
+							superLoad-=1;
+							if (c != null) {
+								append(name, c);
+								return c;
 							}
-//								stream1 = this.parent.getResourceAsStream(name);
-//								c = defineFromStream(name, stream1);
-//								if (c == null) {
-//									c = checkAdditionalLoaders(name);
-//									if (c == null) c = findClassNoAdditional(name, false);
-//								}
-//								assert stream1 != null;
-//								stream1.close();
+							throw new Exception();
+						} catch (Throwable err3) {
+							error=err3;
+							superLoad-=1;
+							FlameLauncher.logError(err3);
 						}
-						error = err;
-						if (c == null) c = this.checkAdditionalLoaders(name);
 					}
 				}
-			} catch (Throwable err) {
-				if (c == null) c = this.checkAdditionalLoaders(name);
-				error = err;
-			}
-			if (c == null && error != null) {
-				FlameLauncher.logError(error);
-				FlameLauncher.field.append("Failed to load class: " + path + "\\" + name + "\n");
-			}
-			if (c != null) FlameLauncher.field.append("Loaded Class: " + name + "\n");
-			else {
-				FlameLauncher.field.append("Checking additional loaders and other known loaders for class: " + name + "\n");
-				c = this.checkAdditionalLoaders(name);
-				if (c == null) c = this.findClassNoAdditional(name, true);
-				if (c != null) FlameLauncher.field.append("Other loaders loaded class: " + name + "\n");
-			}
-			if (c != null) {
-				append(name, c);
-				return c;
-			}
-		}
-		try {
-			Class<?> c = this.checkAdditionalLoaders(name);
-			if (c == null) c = this.findClassNoAdditional(name, true);
-			if (c != null) {
-				append(name, c);
-				return c;
-			} else {
-				try {
-					if (parent != null) c = parent.loadClass(name);
-				} catch (Throwable ignored) {
+				if (c == null && error != null) {
+					FlameLauncher.logError(error);
+					FlameLauncher.field.append("Failed to load class: " + path + "\\" + name + "\n");
 				}
-				if (c == null && this.getClass().getClassLoader() != null) {
-					try {
-						c = this.getClass().getClassLoader().loadClass(name);
-					} catch (Throwable ignored) {
-					}
-					if (c == null && this.getClass().getClassLoader().getClass().getClassLoader() != null)
-						c = this.getClass().getClassLoader().getClass().getClassLoader().loadClass(name);
-				}
-				if (owner != null && c == null) c = owner.findClassShort(name);
-				if (c == null) throw new Exception("Missing Class: " + name);
+				if (c != null) FlameLauncher.field.append("Loaded Class: " + name + "\n");
 				else {
+					FlameLauncher.field.append("Checking additional loaders and other known loaders for class: " + name + "\n");
+					c = this.checkAdditionalLoaders(name);
+					if (c == null) c = this.findClassNoAdditional(name, true);
+					if (c != null) FlameLauncher.field.append("Other loaders loaded class: " + name + "\n");
+				}
+				if (c != null) {
 					append(name, c);
 					return c;
 				}
 			}
-		} catch (Throwable err) {
-			FlameLauncher.logError(err);
-			return null;
+			try {
+				Class<?> c = this.checkAdditionalLoaders(name);
+				if (c == null) c = this.findClassNoAdditional(name, true);
+				if (c != null) {
+					append(name, c);
+					return c;
+				} else {
+					try {
+						if (parent != null) c = parent.loadClass(name);
+						throw new Exception();
+					} catch (Throwable ignored) {
+					}
+					if (c == null && this.getClass().getClassLoader() != null) {
+						try {
+							c = this.getClass().getClassLoader().loadClass(name);
+						} catch (Throwable ignored) {
+						}
+						if (c == null && this.getClass().getClassLoader().getClass().getClassLoader() != null)
+							c = this.getClass().getClassLoader().getClass().getClassLoader().loadClass(name);
+					}
+					if (owner != null && c == null) c = owner.findClassShort(name);
+					if (c == null) throw new Exception("Missing Class: " + name);
+					else {
+						append(name, c);
+						return c;
+					}
+				}
+			} catch (Throwable err) {
+				FlameLauncher.logError(err);
+				try {
+					return parent.loadClass(name);
+				} catch (Throwable err2) {
+					return null;
+				}
+			}
+		}
+		try {
+			superLoad+=1;
+			Class<?> c = super.loadClass(name, true);
+			superLoad-=1;
+			if (c != null) {
+				append(name, c);
+				return c;
+			}
+			throw new Exception();
+		} catch (Throwable err3) {
+			superLoad-=1;
+			FlameLauncher.logError(err3);
+			try {
+				return parent.loadClass(name);
+			} catch (Throwable err) {
+				return null;
+			}
 		}
 	}
 	
@@ -455,7 +727,7 @@ public class FlameLoader extends ClassLoader {
 	}
 	
 	public Class<?> findClassShort(String name) {
-		Class c = classes_map.getOrDefault(name, null);
+		Class c = classMap.getOrDefault(name, null);
 //		if (this.owner!=null) {
 //			c=this.owner.findClass(name);
 //		}
@@ -477,23 +749,24 @@ public class FlameLoader extends ClassLoader {
 	
 	@Override
 	protected Class<?> findClass(String name) {
+		FlameLauncher.field.append("Finding class:" + name + "\n");
 		Class<?> c = findClassNoAdditional(name, false);
 		if (this.owner == null && c == null) c = checkAdditionalLoaders(name);
-		if (!classes_map.containsKey(name)) append(name, c);
+		append(name,c);
 		return c;
 	}
 	
 	private Class<?> findClassNoAdditional(String name, boolean useSuper) {
-		Class c = classes_map.getOrDefault(name, null);
+		Class c = classMap.getOrDefault(name, null);
 		if (this.owner != null) {
 			c = this.owner.findClassNoAdditional(name, useSuper);
 		}
-		if (useSuper && c == null) {
-			try {
-//				return super.loadClass(name, false);
-			} catch (Throwable ignored) {
-			}
-		}
+//		if (useSuper && c == null) {
+//			try {
+////				return super.loadClass(name, false);
+//			} catch (Throwable ignored) {
+//			}
+//		}
 		if (c == null && useSuper) {
 			try {
 				c = this.findSystemClass(name);
@@ -506,25 +779,25 @@ public class FlameLoader extends ClassLoader {
 			} catch (Throwable ignored) {
 			}
 		}
-		if (getParent() != null && c == null) {
-			try {
-				c = getParent().loadClass(name);
-			} catch (Throwable ignored) {
-			}
-		}
-		if (parent != null && c == null) {
-			try {
-				c = parent.loadClass(name);
-			} catch (Throwable ignored) {
-			}
-		}
-		if (c == null) {
-			try {
-				c = this.getClass().getClassLoader().loadClass(name);
-			} catch (Throwable ignored) {
-			}
-		}
-		if (!classes_map.containsKey(name)) append(name, c);
+//		if (getParent() != null && c == null) {
+//			try {
+//				c = getParent().loadClass(name);
+//			} catch (Throwable ignored) {
+//			}
+//		}
+//		if (parent != null && c == null) {
+//			try {
+//				c = parent.loadClass(name);
+//			} catch (Throwable ignored) {
+//			}
+//		}
+//		if (c == null) {
+//			try {
+//				c = this.getClass().getClassLoader().loadClass(name);
+//			} catch (Throwable ignored) {
+//			}
+//		}
+		append(name,c);
 		return c;
 	}
 	
@@ -545,9 +818,10 @@ public class FlameLoader extends ClassLoader {
 //			} catch (Throwable ignored) {
 //			}
 //		}
-		Class c = this.loadClass(name);
+		FlameLauncher.field.append("Finding class:" + name + "\n");
+		Class<?> c = this.loadClass(name);
 		if (resolve) this.resolveClass(c);
-		if (!classes_map.containsKey(name)) append(name, c);
+		append(name,c);
 		return c;
 	}
 	
