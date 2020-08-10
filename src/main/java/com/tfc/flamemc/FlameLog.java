@@ -4,7 +4,7 @@ import java.awt.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class FlameTextArea extends TextArea {
+public class FlameLog extends TextArea {
 	@Override
 	public void append(String str) {
 		String pattern = "hh:mm:ss";

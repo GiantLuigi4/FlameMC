@@ -1,13 +1,10 @@
 package com.tfc.flamemc;
 
 import javax.swing.*;
-import java.awt.*;
 import java.io.File;
 import java.io.FileWriter;
-import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -21,7 +18,7 @@ public class FlameLauncher {
 	
 	public static final FlameLoader loader = new FlameLoader();
 	
-	public static final FlameTextArea field = new FlameTextArea();
+	public static final FlameLog field = new FlameLog();
 	
 	protected static boolean log_bytecode = false;
 	
@@ -67,7 +64,7 @@ public class FlameLauncher {
 		try {
 			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLauncher"));
 			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLoader"));
-			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameTextArea"));
+			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLog"));
 			lockedClasses.add(Class.forName("com.tfc.flamemc.IFlameMod"));
 		} catch (Throwable ignored) {
 		}
@@ -79,6 +76,7 @@ public class FlameLauncher {
 		field.append("Locked FlameMC classes\n");
 		
 		field.append("Discovering Flame Mods\n");
+		HashMap<String,IFlameMod> mods = new HashMap<>();
 		try {
 			for (File fi:Objects.requireNonNull(new File(dir + "\\flame_mods").listFiles())) {
 				if (fi.exists() && (fi.getName().endsWith(".zip") || fi.getName().endsWith(".jar"))) {
@@ -88,26 +86,36 @@ public class FlameLauncher {
 							JarFile file = new JarFile(fi);
 							Enumeration<JarEntry> entries = file.entries();
 							while (entries.hasMoreElements()) {
-								JarEntry entry = entries.nextElement();
-								String name = entry.getName();
-								if (name.startsWith("entries/"+fi.getName().replace(".jar","")+"/") && name.endsWith(".class")) {
-									c = loader.load(entry.getName().replace(".class", "").replace("/","."),true);
-									((IFlameMod)c.newInstance()).init(args);
-//									Method main = c.getMethod("main", String[].class);
-//									main.invoke(c.newInstance(), (Object) args);
+								try {
+									JarEntry entry = entries.nextElement();
+									String name = entry.getName();
+									if (name.contains("entries/"+fi.getName().replace(".jar","")+"/") && name.endsWith(".class")) {
+										c = loader.load(entry.getName().replace(".class", "").replace("/","."),true);
+										IFlameMod mod = ((IFlameMod)c.newInstance());
+										mods.put(name,mod);
+//										Method main = c.getMethod("main", String[].class);
+//										main.invoke(c.newInstance(), (Object) args);
+									}
+								} catch (Throwable err) {
+									logError(err);
 								}
 							}
 						} else {
 							ZipFile file = new ZipFile(fi);
 							Enumeration<ZipEntry> entries = (Enumeration<ZipEntry>) file.entries();
 							while (entries.hasMoreElements()) {
-								ZipEntry entry = entries.nextElement();
-								String name = entry.getName();
-								if (name.startsWith("entries/"+fi.getName().replace(".zip","")+"/") && name.endsWith(".class")) {
-									c = loader.load(entry.getName().replace(".class", "").replace("/","."),true);
-//									Method main = c.getMethod("main", String[].class);
-//									main.invoke(c.newInstance(), (Object) args);
-									((IFlameMod)c.newInstance()).init(args);
+								try {
+									ZipEntry entry = entries.nextElement();
+									String name = entry.getName();
+									if (name.contains("entries/"+fi.getName().replace(".zip","")+"/") && name.endsWith(".class")) {
+										c = loader.load(entry.getName().replace(".class", "").replace("/","."),true);
+//										Method main = c.getMethod("main", String[].class);
+//										main.invoke(c.newInstance(), (Object) args);
+										IFlameMod mod = ((IFlameMod)c.newInstance());
+										mods.put(name,mod);
+									}
+								} catch (Throwable err) {
+									logError(err);
 								}
 							}
 						}
@@ -125,6 +133,12 @@ public class FlameLauncher {
 				}
 			}
 		} catch (Throwable ignored) {}
+		mods.forEach((name,iFlameMod) -> {
+			field.append("Initializing:"+name+"\n");
+			iFlameMod.preinit(args,field);
+			iFlameMod.init(args,field);
+			iFlameMod.postinit(args,field);
+		});
 		try {
 			Scanner sc = new Scanner(flame_config);
 			while (sc.hasNextLine()) {

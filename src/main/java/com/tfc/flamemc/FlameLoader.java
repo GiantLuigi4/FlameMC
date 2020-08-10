@@ -34,22 +34,23 @@ public class FlameLoader extends ClassLoader {
 			try {
 				AtomicReference<Class<?>> toRemove = new AtomicReference<>(null);
 				Vector<Class<?>> vc = ((Vector<Class<?>>) (this.getClass().getField("classes").get(this)));
-				vc.forEach(c1 -> {
-					if (c1.getName().equals(c.getName())) {
-						toRemove.set(c1);
-					}
-				});
-				if (toRemove.get() != null) vc.remove(toRemove.get());
-				vc.add(c);
+//				vc.forEach(c1 -> {
+//					if (c1.getName().equals(c.getName())) {
+//						toRemove.set(c1);
+//					}
+//				});
+//				if (toRemove.get() != null) vc.remove(toRemove.get());
+				vc.clear();
 			} catch (Throwable ignored) {
 			}
+			if (!this.classes_map.containsKey(name)) append(name,c);
 			return c;
 		} catch (Throwable err) {
 			return this.trimAndDefine(name, bytes);
 		}
 	}
 	
-	private final HashMap<String, Class<?>> classes = new HashMap<>();
+	private final HashMap<String, Class<?>> classes_map = new HashMap<>();
 	
 	private static final String dir = System.getProperty("user.dir");
 	
@@ -112,18 +113,18 @@ public class FlameLoader extends ClassLoader {
 				i++;
 //				FlameMain.field.append("Loader:"+i+"/"+loaders.size()+"\n");
 				if (c != null) {
-					if (!classes.containsKey(name)) append(name, c);
+					if (!classes_map.containsKey(name)) append(name, c);
 					return c;
 				}
 			} catch (Throwable err) {
-				FlameLauncher.logError(err);
+//				FlameLauncher.logError(err);
 			}
 		}
 		return null;
 	}
 	
 	public void append(String name, Class<?> clazz) {
-		classes.put(name, clazz);
+		classes_map.put(name, clazz);
 	}
 	
 //	@Override
@@ -294,7 +295,7 @@ public class FlameLoader extends ClassLoader {
 						} catch (Throwable err) {
 							try {
 								stream1.close();
-							} catch (Throwable err2) {
+							} catch (Throwable ignored) {
 							}
 							error = err;
 						}
@@ -424,19 +425,23 @@ public class FlameLoader extends ClassLoader {
 			stream1.read(bytes1);
 			for (String file : unsafeMerging) {
 				for (FlameLoader loader : loaders) {
-					String path1 = loader.path + "\\" + file;
+					try {
+						String path1 = loader.path + "\\" + file;
+						ClassPath path2 = new ClassPath(path1);
+						InputStream stream2 = path2.getResourceAsStream(name);
+						byte[] bytes2 = new byte[stream1.available()];
+						stream2.read(bytes2);
+						bytes1 = merge(bytes1, bytes2);
+					} catch (Throwable ignored) {}
+				}
+				try {
+					String path1 = path + "\\" + file;
 					ClassPath path2 = new ClassPath(path1);
 					InputStream stream2 = path2.getResourceAsStream(name);
 					byte[] bytes2 = new byte[stream1.available()];
 					stream2.read(bytes2);
 					bytes1 = merge(bytes1, bytes2);
-				}
-				String path1 = path + "\\" + file;
-				ClassPath path2 = new ClassPath(path1);
-				InputStream stream2 = path2.getResourceAsStream(name);
-				byte[] bytes2 = new byte[stream1.available()];
-				stream2.read(bytes2);
-				bytes1 = merge(bytes1, bytes2);
+				} catch (Throwable ignored) {}
 			}
 			if (FlameLauncher.log_bytecode) {
 				StringBuilder bytecode = new StringBuilder();
@@ -450,7 +455,7 @@ public class FlameLoader extends ClassLoader {
 	}
 	
 	public Class<?> findClassShort(String name) {
-		Class c = classes.getOrDefault(name, null);
+		Class c = classes_map.getOrDefault(name, null);
 //		if (this.owner!=null) {
 //			c=this.owner.findClass(name);
 //		}
@@ -474,12 +479,12 @@ public class FlameLoader extends ClassLoader {
 	protected Class<?> findClass(String name) {
 		Class<?> c = findClassNoAdditional(name, false);
 		if (this.owner == null && c == null) c = checkAdditionalLoaders(name);
-		if (!classes.containsKey(name)) append(name, c);
+		if (!classes_map.containsKey(name)) append(name, c);
 		return c;
 	}
 	
 	private Class<?> findClassNoAdditional(String name, boolean useSuper) {
-		Class c = classes.getOrDefault(name, null);
+		Class c = classes_map.getOrDefault(name, null);
 		if (this.owner != null) {
 			c = this.owner.findClassNoAdditional(name, useSuper);
 		}
@@ -519,7 +524,7 @@ public class FlameLoader extends ClassLoader {
 			} catch (Throwable ignored) {
 			}
 		}
-		if (!classes.containsKey(name)) append(name, c);
+		if (!classes_map.containsKey(name)) append(name, c);
 		return c;
 	}
 	
@@ -542,7 +547,7 @@ public class FlameLoader extends ClassLoader {
 //		}
 		Class c = this.loadClass(name);
 		if (resolve) this.resolveClass(c);
-		if (!classes.containsKey(name)) append(name, c);
+		if (!classes_map.containsKey(name)) append(name, c);
 		return c;
 	}
 	
