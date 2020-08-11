@@ -73,7 +73,7 @@ public class FlameLauncher {
 					log_bytecode = Boolean.parseBoolean(line.replace("log_bytecode:", ""));
 				} else if (line.startsWith("main_class:")) {
 					main_class = source_line.substring("main_class:".length());
-					Class<?> mainClass = loader.load(main_class,true);
+//					Class<?> mainClass = loader.load(main_class,true);
 				}
 			}
 			sc.close();
@@ -251,9 +251,11 @@ public class FlameLauncher {
 			field.append("Game arguments: " + Arrays.toString(args) + "\n");
 			Class<?> mainClass = loader.load(main_class,true);
 			field.append("Got main class\n");
+			if (mainClass!=null){
 			Method main = mainClass.getMethod("main", String[].class);
 			if (args != null) main.invoke(null, (Object) args);
-			else throw new Exception("Game args are missing???");
+			else throw new Exception("Game args are missing???");}
+			else throw new Exception("Main class is missing???");
 		} catch (Throwable err) {
 			logError(err);
 			if (err instanceof InvocationTargetException) logError(err.getCause());
