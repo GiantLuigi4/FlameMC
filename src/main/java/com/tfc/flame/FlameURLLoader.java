@@ -1,6 +1,6 @@
 package com.tfc.flame;
 
-import jdk.internal.perf.PerfCounter;
+//import jdk.internal.perf.PerfCounter;
 import org.apache.bcel.util.ClassPath;
 
 import java.io.InputStream;
@@ -76,9 +76,9 @@ public class FlameURLLoader extends URLClassLoader {
 				if (c == null) {
 					long t1 = System.nanoTime();
 					c = this.findClass(name);
-					PerfCounter.getParentDelegationTime().addTime(t1 - t0);
-					PerfCounter.getFindClassTime().addElapsedTimeFrom(t1);
-					PerfCounter.getFindClasses().increment();
+//					PerfCounter.getParentDelegationTime().addTime(t1 - t0);
+//					PerfCounter.getFindClassTime().addElapsedTimeFrom(t1);
+//					PerfCounter.getFindClasses().increment();
 				}
 			}
 			

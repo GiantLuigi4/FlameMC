@@ -62,7 +62,7 @@ public class FlameLauncher {
 				} else if (line.startsWith("log_bytecode:")) {
 					FlameConfig.log_bytecode = Boolean.parseBoolean(line.replace("log_bytecode:", ""));
 				} else if (line.startsWith("log_class_names:")) {
-					FlameConfig.log_bytecode = Boolean.parseBoolean(line.replace("log_class_names:", ""));
+					FlameConfig.log_classnames = Boolean.parseBoolean(line.replace("log_class_names:", ""));
 				} else if (line.startsWith("main_class:")) {
 					main_class = source_line.substring("main_class:".length());
 				}
