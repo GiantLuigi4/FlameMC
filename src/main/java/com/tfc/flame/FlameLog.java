@@ -1,4 +1,4 @@
-package com.tfc.flamemc;
+package com.tfc.flame;
 
 import java.awt.*;
 import java.text.SimpleDateFormat;

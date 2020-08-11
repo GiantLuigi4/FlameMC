@@ -7,16 +7,6 @@ import java.util.jar.JarOutputStream;
 public class FlameInstaller {
 	private static final String dir = System.getProperty("user.dir");
 	
-	String[] registryCheck = new String[] {
-			"<T>\n" +
-			"\"block\"\n" +
-			"\"item\"\n" +
-			"\"entity\"\n" +
-			"registry\n" +
-			"Registry\n" +
-			"DefaultedMappedRegistry"
-	};
-	
 	public static void main(String[] args) {
 		try {
 			JarFile file = new JarFile(new File(dir + "\\input_version\\1.15.2.jar"));
