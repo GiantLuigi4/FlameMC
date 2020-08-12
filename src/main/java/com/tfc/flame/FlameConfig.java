@@ -14,9 +14,7 @@ public class FlameConfig {
 		for (StackTraceElement element : err.getStackTrace()) {
 			s.append(element.toString()).append("\n");
 		}
-		try {
-			Thread.sleep(2000);
-		} catch (Throwable err2) {}
+//		try{Thread.sleep(2000);}catch(Throwable err2){}
 		field.append(s.toString());
 		err.getStackTrace();
 	}

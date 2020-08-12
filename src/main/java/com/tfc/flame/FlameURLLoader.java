@@ -14,42 +14,58 @@ public class FlameURLLoader extends URLClassLoader {
 		super(urls);
 	}
 	
-	public Class<?> load(String name,boolean resolve) throws ClassNotFoundException {
-		return loadClass(name,resolve);
+	public Class<?> load(String name, boolean resolve) throws ClassNotFoundException {
+		return loadClass(name, resolve);
 	}
 	
 	@Override
 	public Class<?> loadClass(String name) throws ClassNotFoundException {
-		return this.loadClass(name,true);
+		return this.loadClass(name, true);
 	}
 	
-	private final HashMap<String,byte[]> merges = new HashMap<>();
-	private final HashMap<String,byte[]> replacements = new HashMap<>();
+	private final HashMap<String, byte[]> merges = new HashMap<>();
+	private final HashMap<String, byte[]> replacements = new HashMap<>();
 	
 	public void findReplacement(String name) {
+		FlameConfig.field.append(name + "\n");
 		String name1 = "";
+		byte[] bytes1 = null;
 		try {
-			name1 = name.replace("merges.","").replace("replacements.","");
-			name1 = name1.substring(name1.indexOf('.')+1);
-		} catch (Throwable ignored) {}
+			name1 = name.replace("merges.", "").replace("replacements.", "");
+			name1 = name1.substring(name1.indexOf('.') + 1);
+		} catch (Throwable ignored) {
+		}
+		for (URL url : this.getURLs()) {
+			if (bytes1 == null) {
+				try {
+					bytes1 = new ClassPath(url.getPath()).getBytes(name);
+				} catch (Throwable err) {
+					try {
+						bytes1 = new ClassPath(url.getFile()).getBytes(name);
+					} catch (Throwable ignored) {
+					}
+				}
+			}
+		}
 		try {
 			InputStream stream = this.getResourceAsStream(name);
-			assert stream!=null;
-			byte[] bytes1 = new byte[stream.available()];
+			assert stream != null;
+			bytes1 = new byte[stream.available()];
 			stream.read(bytes1);
 			stream.close();
-			if (name.startsWith("merges.")) {
-				if (!merges.containsKey(name)) {
-					merges.put(name1,bytes1);
-					FlameConfig.field.append("Found merge for class: "+name1);
-				} else {
-					merges.replace(name1.replace("merges.",""),merge(bytes1,merges.get(name1)));
-				}
-			} else if (name.startsWith("replacements.")) {
-				FlameConfig.field.append("Found replacement for class: "+name1+"\n");
-				replacements.putIfAbsent(name1,bytes1);
+		} catch (Throwable ignored) {
+		}
+		if (name.startsWith("merges.")) {
+			if (!merges.containsKey(name)) {
+				merges.put(name1, bytes1);
+				FlameConfig.field.append("Found merge for class: " + name1);
+			} else {
+				merges.replace(name1.replace("merges.", ""), merge(bytes1, merges.get(name1)));
 			}
-		} catch (Throwable ignored) {}
+		} else if (name.startsWith("replacements.")) {
+			FlameConfig.field.append("Found replacement for class: " + name1 + "\n");
+			replacements.putIfAbsent(name1, bytes1);
+		}
 	}
 	
 	@Override
@@ -61,26 +77,29 @@ public class FlameURLLoader extends URLClassLoader {
 				throw new SecurityException("Tried to load class in invalid namespace: \"com.tfc.flame\"");
 			}
 		}
-		synchronized(this.getClassLoadingLock(name)) {
-			if (FlameConfig.log_classnames) FlameConfig.field.append(name+"\n");
+		synchronized (this.getClassLoadingLock(name)) {
+			if (FlameConfig.log_classnames) FlameConfig.field.append(name + "\n");
 			Class<?> c = this.findLoadedClass(name);
 			if (c == null) {
 //				long t0 = System.nanoTime();
 				try {
 					byte[] bytes1 = null;
 					for (URL url : this.getURLs()) {
-						if (bytes1==null) {
+						if (bytes1 == null) {
 							try {
 								bytes1 = new ClassPath(url.getPath()).getBytes(name);
 							} catch (Throwable ignored) {
-								try {
-									InputStream stream = this.getResourceAsStream(name);
-									assert stream!=null;
-									bytes1 = new byte[stream.available()];
-									stream.read(bytes1);
-									stream.close();
-								} catch (Throwable ignored1) {}
 							}
+						}
+					}
+					if (bytes1 == null) {
+						try {
+							InputStream stream = this.getResourceAsStream(name);
+							assert stream != null;
+							bytes1 = new byte[stream.available()];
+							stream.read(bytes1);
+							stream.close();
+						} catch (Throwable ignored1) {
 						}
 					}
 //					for (URL url : this.getURLs()) {
@@ -110,16 +129,16 @@ public class FlameURLLoader extends URLClassLoader {
 //					} catch (Throwable err) {}
 					if (replacements.containsKey(name)) {
 						bytes1 = replacements.get(name);
-					} else if (bytes1!=null&&merges.containsKey(name)) {
-						FlameConfig.field.append("Merging class: "+name+" with modded versions of said class.\n");
+					} else if (bytes1 != null && merges.containsKey(name)) {
+						FlameConfig.field.append("Merging class: " + name + " with modded versions of said class.\n");
 						FlameConfig.field.append("Things might go wrong.\n");
-						bytes1 = merge(bytes1,merges.get(name));
+						bytes1 = merge(bytes1, merges.get(name));
 					}
-					if (FlameConfig.log_bytecode) FlameConfig.field.append(Arrays.toString(bytes1)+"\n");
+					if (FlameConfig.log_bytecode) FlameConfig.field.append(Arrays.toString(bytes1) + "\n");
 					//Define if possible
-					if (bytes1 != null) c = this.defineClass(bytes1,0,bytes1.length);
+					if (bytes1 != null) c = this.defineClass(bytes1, 0, bytes1.length);
 					//Load from parent
-					if (c==null&&this.getParent() != null) c = this.getParent().loadClass(name);
+					if (c == null && this.getParent() != null) c = this.getParent().loadClass(name);
 				} catch (ClassNotFoundException err) {
 					FlameConfig.logError(err);
 				}
@@ -151,7 +170,7 @@ public class FlameURLLoader extends URLClassLoader {
 				FlameConfig.field.append("Bytecode:" + bytecode.toString() + "\n");
 			}
 			stream1.close();
-			return this.defineClass(bytes1,0,bytes1.length);
+			return this.defineClass(bytes1, 0, bytes1.length);
 		}
 		return null;
 	}
