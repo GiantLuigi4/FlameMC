@@ -19,7 +19,6 @@ dependencies {
     // https://mvnrepository.com/artifact/org.apache.bcel/bcel
     compile group: 'org.apache.bcel', name: 'bcel', version: '6.0'
 
-//    compile "https://maven.fabricmc.net/net/fabricmc/sponge-mixin/0.7.11.36/sponge-mixin-0.7.11.36.jar"
     // https://mvnrepository.com/artifact/org.ow2.asm/asm
     compile group: 'org.ow2.asm', name: 'asm', version: '7.1'
     // https://mvnrepository.com/artifact/org.ow2.asm/asm-commons

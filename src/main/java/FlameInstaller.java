@@ -28,19 +28,6 @@ public class FlameInstaller {
 			stream.write(bytes);
 			inStream1.close();
 			
-			stream.putNextEntry(new JarEntry("com/tfc/flamemc/FlameLauncher$1.class"));
-			inStream1 = new FileInputStream(dir + "\\contents\\FlameLauncher$1.class");
-			bytes = new byte[inStream1.available()];
-			inStream1.read(bytes);
-			stream.write(bytes);
-			inStream1.close();
-			
-			stream.putNextEntry(new JarEntry("com/tfc/flamemc/FlameLoader.class"));
-			inStream1 = new FileInputStream(dir + "\\contents\\FlameLoader.class");
-			bytes = new byte[inStream1.available()];
-			stream.write(bytes);
-			inStream1.close();
-			
 			stream.close();
 		} catch (Throwable err) {
 			err.printStackTrace();
