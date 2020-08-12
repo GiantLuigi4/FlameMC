@@ -22,6 +22,7 @@ public class FlameLauncher {
 	public static ArrayList<Class> lockedClasses = new ArrayList<>();
 	
 //	public static final FlameLoader loader = new FlameLoader();
+	private static FlameURLLoader loader;
 	
 	public static final FlameLog field = new FlameLog();
 	
@@ -114,7 +115,7 @@ public class FlameLauncher {
 				File fi1=new File(s);
 				urls[i+1] = fi1.toURL();
 			}
-			FlameURLLoader loader = new FlameURLLoader(urls);
+			loader = new FlameURLLoader(urls);
 			field.append("Locking FlameMC classes\n");
 			lockedClasses.forEach(c -> {
 				field.append(c.getName() + '\n');
@@ -255,5 +256,9 @@ public class FlameLauncher {
 		}
 		if (log) frame.dispose();
 		if (err != null) throw new RuntimeException(err);
+	}
+	
+	public static void addClassReplacement(String clazz) {
+		loader.findReplacement(clazz);
 	}
 }
