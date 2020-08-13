@@ -18,6 +18,8 @@ public class FlameLauncher {
 	
 	public static final FlameLog field = new FlameLog();
 	
+	protected static final ArrayList<String> additionalURLs = new ArrayList<>();
+	
 	public static void main(String[] args) {
 		field.append("Startup Flame\n");
 		field.append(Arrays.toString(args));
@@ -26,8 +28,10 @@ public class FlameLauncher {
 		
 		String version = "1.15.2-flame";
 		String gameDir = dir;
+		String main_class = null;
 		boolean isVersion = false;
 		boolean isDir = false;
+		boolean isMain = false;
 		for (String s : args) {
 			if (s.equals("--version")) {
 				isVersion = true;
@@ -39,6 +43,11 @@ public class FlameLauncher {
 			} else if (isDir) {
 				gameDir = s;
 				isDir = false;
+			} else if (s.equals("--main_class")) {
+				isMain = true;
+			} else if (isMain) {
+				main_class = s;
+				isMain = false;
 			}
 		}
 		
@@ -80,32 +89,33 @@ public class FlameLauncher {
 			FlameConfig.logError(err);
 		}
 		
-		String main_class = "net.minecraft.client.main.Main";
-		File version_config = new File(dir + "\\versions\\" + version + "\\options.txt");
-		if (!version_config.exists()) {
+		if (main_class == null) {
+			File version_config = new File(dir + "\\versions\\" + version + "\\options.txt");
+			if (!version_config.exists()) {
+				try {
+					version_config.getParentFile().mkdirs();
+					version_config.createNewFile();
+					FileWriter writer = new FileWriter(version_config);
+					writer.write("main_class:" + main_class);
+					writer.close();
+				} catch (Throwable err) {
+					FlameConfig.logError(err);
+				}
+			}
+			
 			try {
-				version_config.getParentFile().mkdirs();
-				version_config.createNewFile();
-				FileWriter writer = new FileWriter(version_config);
-				writer.write("main_class:" + main_class);
-				writer.close();
+				Scanner sc = new Scanner(version_config);
+				while (sc.hasNextLine()) {
+					String source_line = sc.nextLine();
+					String line = source_line.toLowerCase();
+					if (line.startsWith("main_class:")) {
+						main_class = source_line.substring("main_class:".length());
+					}
+				}
+				sc.close();
 			} catch (Throwable err) {
 				FlameConfig.logError(err);
 			}
-		}
-		
-		try {
-			Scanner sc = new Scanner(version_config);
-			while (sc.hasNextLine()) {
-				String source_line = sc.nextLine();
-				String line = source_line.toLowerCase();
-				if (line.startsWith("main_class:")) {
-					main_class = source_line.substring("main_class:".length());
-				}
-			}
-			sc.close();
-		} catch (Throwable err) {
-			FlameConfig.logError(err);
 		}
 
 //		field.append("Set Version Loader Path\n");
@@ -146,13 +156,20 @@ public class FlameLauncher {
 			
 			for (File fi1 : Objects.requireNonNull(fi.listFiles())) mods.add(fi1.getPath());
 			
-			URL[] urls = new URL[mods.size() + 1];
+			URL[] urls = new URL[mods.size() + 1 + additionalURLs.size()];
 			urls[0] = new File(dir + "\\versions\\" + version + "\\" + version + ".jar").toURL();
 			for (int i = 0; i < mods.size(); i++) {
 				String s = mods.get(i);
 				File fi1 = new File(s);
 				urls[i + 1] = fi1.toURL();
 			}
+			
+			for (int i = 0; i < additionalURLs.size(); i++) {
+				String s = additionalURLs.get(i);
+				File fi1 = new File(s);
+				urls[i + mods.size() + 1] = fi1.toURL();
+			}
+			
 			loader = new FlameURLLoader(urls);
 			field.append("Locking FlameMC classes\n");
 			lockedClasses.forEach(c -> {

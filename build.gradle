@@ -4,7 +4,7 @@ plugins {
 
 apply plugin: 'maven'
 group 'com.tfc'
-version '1.0-SNAPSHOT'
+version ''
 
 sourceCompatibility = 1.8
 
@@ -27,4 +27,10 @@ dependencies {
     compile group: 'org.ow2.asm', name: 'asm-tree', version: '7.1'
     // https://mvnrepository.com/artifact/org.ow2.asm/asm-util
     compile group: 'org.ow2.asm', name: 'asm-util', version: '7.1'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'FlameInstaller'
+    }
 }
