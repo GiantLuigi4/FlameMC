@@ -130,40 +130,16 @@ public class FlameURLLoader extends URLClassLoader {
 							bytes1 = function.apply(name);
 						}
 					}
-					for (BiFunction<String,byte[],byte[]> function:asmAppliers.values()) {
-						bytes1 = function.apply(name,bytes1);
-					}
-//					for (URL url : this.getURLs()) {
-//						String modid = new File(url.getFile()).getName().replace(".jar","").replace(".zip","");
-//						try {
-//							byte[] bytes = new ClassPath(url.getFile()).getBytes("merges."+modid+"."+name);
-//							assert bytes1 != null;
-//							bytes1 = merge(bytes1,bytes);
-//							FlameConfig.field.append("Merging class: "+name+" with modded versions of said class.\n");
-//							FlameConfig.field.append("Things might go wrong.\n");
-//						} catch (Throwable ignored) {
-//							try {
-//							} catch (Throwable ignored1) {
-////								FlameConfig.logError(ignored);
-//							}
-//						}
-//					}
-//					try {
-//						InputStream stream = this.getResourceAsStream("merges."+name);
-//						byte[] bytes2 = new byte[stream.available()];
-//						stream.read(bytes2);
-//						FlameConfig.field.append(Arrays.toString(bytes2)+"\n");
-//						FlameConfig.field.append("Merging class: "+name+" with modded versions of said class.\n");
-//						FlameConfig.field.append("Things might go wrong.\n");
-//						bytes1 = merge(bytes1,bytes2);
-//						stream.close();
-//					} catch (Throwable err) {}
 					if (replacements.containsKey(name)) {
 						bytes1 = replacements.get(name);
 					} else if (bytes1 != null && merges.containsKey(name)) {
 						FlameConfig.field.append("Merging class: " + name + " with modded versions of said class.\n");
 						FlameConfig.field.append("Things might go wrong.\n");
 						bytes1 = merge(bytes1, merges.get(name));
+					}
+					//Handle ASM
+					for (BiFunction<String,byte[],byte[]> function:asmAppliers.values()) {
+						bytes1 = function.apply(name,bytes1);
 					}
 					if (FlameConfig.log_bytecode) FlameConfig.field.append(Arrays.toString(bytes1) + "\n");
 					//Define if possible
