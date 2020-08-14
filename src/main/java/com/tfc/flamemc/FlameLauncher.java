@@ -16,6 +16,10 @@ public class FlameLauncher {
 	//	public static final FlameLoader loader = new FlameLoader();
 	private static FlameURLLoader loader;
 	
+	public static FlameURLLoader getLoader() {
+		return loader;
+	}
+	
 	public static final FlameLog field = new FlameLog();
 	
 	protected static final ArrayList<String> additionalURLs = new ArrayList<>();

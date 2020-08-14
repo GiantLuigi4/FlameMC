@@ -8,6 +8,8 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class FlameURLLoader extends URLClassLoader {
 	public FlameURLLoader(URL[] urls) {
@@ -26,6 +28,22 @@ public class FlameURLLoader extends URLClassLoader {
 	private final HashMap<String, byte[]> merges = new HashMap<>();
 	private final HashMap<String, byte[]> replacements = new HashMap<>();
 	
+	private static final HashMap<String,Function<String,byte[]>> replacementGetters = new HashMap<>();
+	private static final HashMap<String, BiFunction<String,byte[],byte[]>> asmAppliers = new HashMap<>();
+	private static final HashMap<String, Function<String,byte[]>> baseCodeGetter = new HashMap<>();
+	
+	public static HashMap<String, Function<String, byte[]>> getReplacementGetters() {
+		return replacementGetters;
+	}
+	
+	public static HashMap<String, BiFunction<String, byte[], byte[]>> getAsmAppliers() {
+		return asmAppliers;
+	}
+	
+	public static HashMap<String, Function<String, byte[]>> getBaseCodeGetter() {
+		return baseCodeGetter;
+	}
+	
 	public void findReplacement(String name) {
 		FlameConfig.field.append(name + "\n");
 		String name1 = "";
@@ -35,25 +53,30 @@ public class FlameURLLoader extends URLClassLoader {
 			name1 = name1.substring(name1.indexOf('.') + 1);
 		} catch (Throwable ignored) {
 		}
-		for (URL url : this.getURLs()) {
-			if (bytes1 == null) {
-				try {
-					bytes1 = new ClassPath(url.getPath()).getBytes(name);
-				} catch (Throwable err) {
+		for (Function<String,byte[]> function:replacementGetters.values()) {
+			bytes1=function.apply(name);
+		}
+		if (bytes1==null) {
+			for (URL url : this.getURLs()) {
+				if (bytes1 == null) {
 					try {
-						bytes1 = new ClassPath(url.getFile()).getBytes(name);
-					} catch (Throwable ignored) {
+						bytes1 = new ClassPath(url.getPath()).getBytes(name);
+					} catch (Throwable err) {
+						try {
+							bytes1 = new ClassPath(url.getFile()).getBytes(name);
+						} catch (Throwable ignored) {
+						}
 					}
 				}
 			}
-		}
-		try {
-			InputStream stream = this.getResourceAsStream(name);
-			assert stream != null;
-			bytes1 = new byte[stream.available()];
-			stream.read(bytes1);
-			stream.close();
-		} catch (Throwable ignored) {
+			try {
+				InputStream stream = this.getResourceAsStream(name);
+				assert stream != null;
+				bytes1 = new byte[stream.available()];
+				stream.read(bytes1);
+				stream.close();
+			} catch (Throwable ignored) {
+			}
 		}
 		if (name.startsWith("merges.")) {
 			if (!merges.containsKey(name)) {
@@ -101,6 +124,14 @@ public class FlameURLLoader extends URLClassLoader {
 							stream.close();
 						} catch (Throwable ignored1) {
 						}
+					}
+					if (bytes1==null) {
+						for (Function<String,byte[]> function:baseCodeGetter.values()) {
+							bytes1 = function.apply(name);
+						}
+					}
+					for (BiFunction<String,byte[],byte[]> function:asmAppliers.values()) {
+						bytes1 = function.apply(name,bytes1);
 					}
 //					for (URL url : this.getURLs()) {
 //						String modid = new File(url.getFile()).getName().replace(".jar","").replace(".zip","");
