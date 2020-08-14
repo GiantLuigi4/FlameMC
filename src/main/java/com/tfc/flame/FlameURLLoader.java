@@ -28,19 +28,19 @@ public class FlameURLLoader extends URLClassLoader {
 	private final HashMap<String, byte[]> merges = new HashMap<>();
 	private final HashMap<String, byte[]> replacements = new HashMap<>();
 	
-	private static final HashMap<String,Function<String,byte[]>> replacementGetters = new HashMap<>();
-	private static final HashMap<String, BiFunction<String,byte[],byte[]>> asmAppliers = new HashMap<>();
-	private static final HashMap<String, Function<String,byte[]>> baseCodeGetter = new HashMap<>();
+	private final HashMap<String,Function<String,byte[]>> replacementGetters = new HashMap<>();
+	private final HashMap<String, BiFunction<String,byte[],byte[]>> asmAppliers = new HashMap<>();
+	private final HashMap<String, Function<String,byte[]>> baseCodeGetter = new HashMap<>();
 	
-	public static HashMap<String, Function<String, byte[]>> getReplacementGetters() {
+	public HashMap<String, Function<String, byte[]>> getReplacementGetters() {
 		return replacementGetters;
 	}
 	
-	public static HashMap<String, BiFunction<String, byte[], byte[]>> getAsmAppliers() {
+	public HashMap<String, BiFunction<String, byte[], byte[]>> getAsmAppliers() {
 		return asmAppliers;
 	}
 	
-	public static HashMap<String, Function<String, byte[]>> getBaseCodeGetter() {
+	public HashMap<String, Function<String, byte[]>> getBaseCodeGetter() {
 		return baseCodeGetter;
 	}
 	
