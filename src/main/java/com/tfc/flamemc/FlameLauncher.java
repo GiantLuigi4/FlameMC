@@ -100,7 +100,7 @@ public class FlameLauncher {
 					version_config.getParentFile().mkdirs();
 					version_config.createNewFile();
 					FileWriter writer = new FileWriter(version_config);
-					writer.write("main_class:" + main_class);
+					writer.write("main_class:" + "net.minecraft.client.main.Main");
 					writer.close();
 				} catch (Throwable err) {
 					FlameConfig.logError(err);
