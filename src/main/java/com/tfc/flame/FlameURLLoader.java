@@ -30,7 +30,7 @@ public class FlameURLLoader extends URLClassLoader {
 	
 	private final HashMap<String,Function<String,byte[]>> replacementGetters = new HashMap<>();
 	private final HashMap<String, BiFunction<String,byte[],byte[]>> asmAppliers = new HashMap<>();
-	private final HashMap<String, Function<String,byte[]>> baseCodeGetter = new HashMap<>();
+	private final HashMap<String, Function<String,byte[]>> baseCodeGetters = new HashMap<>();
 	
 	public HashMap<String, Function<String, byte[]>> getReplacementGetters() {
 		return replacementGetters;
@@ -40,8 +40,8 @@ public class FlameURLLoader extends URLClassLoader {
 		return asmAppliers;
 	}
 	
-	public HashMap<String, Function<String, byte[]>> getBaseCodeGetter() {
-		return baseCodeGetter;
+	public HashMap<String, Function<String, byte[]>> getBaseCodeGetters() {
+		return baseCodeGetters;
 	}
 	
 	public void findReplacement(String name) {
@@ -126,7 +126,7 @@ public class FlameURLLoader extends URLClassLoader {
 						}
 					}
 					if (bytes1==null) {
-						for (Function<String,byte[]> function:baseCodeGetter.values()) {
+						for (Function<String,byte[]> function: baseCodeGetters.values()) {
 							bytes1 = function.apply(name);
 						}
 					}
