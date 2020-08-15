@@ -144,6 +144,7 @@ public class FlameLauncher {
 			lockedClasses.add(Class.forName("com.tfc.flame.IFlameMod"));
 			lockedClasses.add(Class.forName("com.tfc.flame.FlameConfig"));
 			lockedClasses.add(Class.forName("com.tfc.flame.FlameURLLoader"));
+			lockedClasses.add(Class.forName("com.tfc.flame.IFlameAPIMod"));
 		} catch (Throwable ignored) {
 		}
 //		field.append("Locking FlameMC classes\n");
@@ -199,20 +200,32 @@ public class FlameLauncher {
 			}
 			mods_list.forEach(mod -> {
 				try {
+					if (mod.getClass().getName().equals("com.tfc.flame.IFlameAPIMod")) {
+						mod.getClass().getMethod("setupAPI", String[].class).invoke(mod, (Object) args);
+					}
+				} catch (Throwable err) {
+					FlameConfig.logError(err);
+				}
+			});
+			mods_list.forEach(mod -> {
+				try {
 					mod.getClass().getMethod("preinit", String[].class).invoke(mod, (Object) args);
-				} catch (Throwable ignored) {
+				} catch (Throwable err) {
+					FlameConfig.logError(err);
 				}
 			});
 			mods_list.forEach(mod -> {
 				try {
 					mod.getClass().getMethod("init", String[].class).invoke(mod, (Object) args);
-				} catch (Throwable ignored) {
+				} catch (Throwable err) {
+					FlameConfig.logError(err);
 				}
 			});
 			mods_list.forEach(mod -> {
 				try {
 					mod.getClass().getMethod("postinit", String[].class).invoke(mod, (Object) args);
-				} catch (Throwable ignored) {
+				} catch (Throwable err) {
+					FlameConfig.logError(err);
 				}
 			});
 			loader.loadClass(main_class).getMethod("main", String[].class).invoke(null, (Object) args);
