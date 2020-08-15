@@ -200,7 +200,7 @@ public class FlameLauncher {
 			}
 			mods_list.forEach(mod -> {
 				try {
-					if (mod.getClass().getName().equals("com.tfc.flame.IFlameAPIMod")) {
+					if (loader.load("com.tfc.flame.IFlameAPIMod",false).isInstance(mod)) {
 						mod.getClass().getMethod("setupAPI", String[].class).invoke(mod, (Object) args);
 					}
 				} catch (Throwable err) {
