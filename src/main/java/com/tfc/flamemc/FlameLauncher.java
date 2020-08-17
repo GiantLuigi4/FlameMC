@@ -5,6 +5,7 @@ import com.tfc.flame.*;
 import javax.swing.*;
 import java.io.File;
 import java.io.FileWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.*;
 
@@ -192,7 +193,8 @@ public class FlameLauncher {
 					try {
 						Object mod = loader.load("entries." + fi1.getName().replace(".zip", "").replace(".jar", "") + ".Main", false).newInstance();
 						mods_list.add(mod);
-					} catch (Throwable ignored) {
+					} catch (Throwable err) {
+						FlameConfig.logError(err);
 					}
 				}
 			} catch (Throwable err) {

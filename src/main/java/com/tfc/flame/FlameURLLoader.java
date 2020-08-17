@@ -28,9 +28,9 @@ public class FlameURLLoader extends URLClassLoader {
 	private final HashMap<String, byte[]> merges = new HashMap<>();
 	private final HashMap<String, byte[]> replacements = new HashMap<>();
 	
-	private final HashMap<String,Function<String,byte[]>> replacementGetters = new HashMap<>();
-	private final HashMap<String, BiFunction<String,byte[],byte[]>> asmAppliers = new HashMap<>();
-	private final HashMap<String, Function<String,byte[]>> baseCodeGetters = new HashMap<>();
+	private final HashMap<String, Function<String, byte[]>> replacementGetters = new HashMap<>();
+	private final HashMap<String, BiFunction<String, byte[], byte[]>> asmAppliers = new HashMap<>();
+	private final HashMap<String, Function<String, byte[]>> baseCodeGetters = new HashMap<>();
 	
 	public HashMap<String, Function<String, byte[]>> getReplacementGetters() {
 		return replacementGetters;
@@ -53,10 +53,7 @@ public class FlameURLLoader extends URLClassLoader {
 			name1 = name1.substring(name1.indexOf('.') + 1);
 		} catch (Throwable ignored) {
 		}
-		for (Function<String,byte[]> function:replacementGetters.values()) {
-			bytes1=function.apply(name);
-		}
-		if (bytes1==null) {
+		if (bytes1 == null) {
 			for (URL url : this.getURLs()) {
 				if (bytes1 == null) {
 					try {
@@ -125,8 +122,8 @@ public class FlameURLLoader extends URLClassLoader {
 						} catch (Throwable ignored1) {
 						}
 					}
-					if (bytes1==null) {
-						for (Function<String,byte[]> function: baseCodeGetters.values()) {
+					if (bytes1 == null) {
+						for (Function<String, byte[]> function : baseCodeGetters.values()) {
 							bytes1 = function.apply(name);
 						}
 					}
@@ -137,9 +134,16 @@ public class FlameURLLoader extends URLClassLoader {
 						FlameConfig.field.append("Things might go wrong.\n");
 						bytes1 = merge(bytes1, merges.get(name));
 					}
+					//Use replacement getters
+					for (Function<String, byte[]> function : replacementGetters.values()) {
+						byte[] bytes2 = function.apply(name);
+						if (bytes2!=null) {
+							bytes1=bytes2;
+						}
+					}
 					//Handle ASM
-					for (BiFunction<String,byte[],byte[]> function:asmAppliers.values()) {
-						bytes1 = function.apply(name,bytes1);
+					for (BiFunction<String, byte[], byte[]> function : asmAppliers.values()) {
+						bytes1 = function.apply(name, bytes1);
 					}
 					if (FlameConfig.log_bytecode) FlameConfig.field.append(Arrays.toString(bytes1) + "\n");
 					//Define if possible
@@ -165,21 +169,6 @@ public class FlameURLLoader extends URLClassLoader {
 			
 			return c;
 		}
-	}
-	
-	private Class<?> defineFromStream(String name, InputStream stream1) throws Throwable {
-		if (stream1 != null) {
-			byte[] bytes1 = new byte[stream1.available()];
-			stream1.read(bytes1);
-			if (FlameConfig.log_bytecode) {
-				StringBuilder bytecode = new StringBuilder();
-				for (byte b : bytes1) bytecode.append(b).append(" ");
-				FlameConfig.field.append("Bytecode:" + bytecode.toString() + "\n");
-			}
-			stream1.close();
-			return this.defineClass(bytes1, 0, bytes1.length);
-		}
-		return null;
 	}
 	
 	private byte[] merge(byte[] source, byte[] to_merge) {

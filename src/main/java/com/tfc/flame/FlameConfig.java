@@ -1,5 +1,7 @@
 package com.tfc.flame;
 
+import java.lang.reflect.InvocationTargetException;
+
 public class FlameConfig {
 	public static boolean log_bytecode = false;
 	public static boolean log_classnames = false;
@@ -14,6 +16,7 @@ public class FlameConfig {
 		for (StackTraceElement element : err.getStackTrace()) {
 			s.append(element.toString()).append("\n");
 		}
+		if (err instanceof InvocationTargetException) FlameConfig.logError(err.getCause());
 //		try{Thread.sleep(2000);}catch(Throwable err2){}
 		field.append(s.toString());
 		err.getStackTrace();
