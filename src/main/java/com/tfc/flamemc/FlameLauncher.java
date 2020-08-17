@@ -20,7 +20,11 @@ public class FlameLauncher {
 	public static FlameURLLoader getLoader() {
 		return loader;
 	}
-	
+
+	public static String getDir() {
+		return dir;
+	}
+
 	public static final FlameLog field = new FlameLog();
 	
 	protected static final ArrayList<String> additionalURLs = new ArrayList<>();

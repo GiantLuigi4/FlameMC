@@ -27,6 +27,8 @@ dependencies {
     compile group: 'org.ow2.asm', name: 'asm-tree', version: '8.0.1'
     // https://mvnrepository.com/artifact/org.ow2.asm/asm-util
     compile group: 'org.ow2.asm', name: 'asm-util', version: '8.0.1'
+    //https://mvnrepository.com/artifact/org.json/json
+    compile group: 'org.json', name: 'json', version: '20200518'
 }
 
 jar {
