@@ -83,7 +83,8 @@ public class FlameInstaller {
 						"com/tfc/flame/FlameConfig.class",
 						"com/tfc/flame/FlameURLLoader.class",
 						"com/tfc/flame/IFlameMod.class",
-						"com/tfc/flame/FlameLog.class"
+						"com/tfc/flame/FlameLog.class",
+						"com/tfc/flame/IFlameAPIMod.class"
 				};
 				
 				for (String s:needed) {
