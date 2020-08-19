@@ -6,7 +6,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -14,7 +13,6 @@ import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
-import java.util.zip.ZipOutputStream;
 
 public class FlameInstaller {
 
@@ -74,13 +72,14 @@ public class FlameInstaller {
 				String versionNumber = new File(versionPath).getName();
 				File inputMinecraftJar = new File(versionPath + "\\" + versionNumber + ".jar");
 				File outputFlameDir = new File(versionPath + "-flame");
-				File flameInstaller = new File(FlameLauncher.getDir() + "\\build\\libs\\FlameInstaller.jar");
+				File flameInstaller = new File(FlameLauncher.getDir() + "\\FlameInstaller.jar");
 				File flameTmpDir = new File(outputFlameDir + "\\tmp");
 				File fullOutput = new File(outputFlameDir + "\\" + versionNumber + "-flame.jar");
 				if (!flameTmpDir.exists())
 					flameTmpDir.getParentFile().mkdirs();
-				ZipUtils zipper = new ZipUtils(flameTmpDir.getPath());
+				ZipUtils zipper = new ZipUtils();
 				zipper.unZip(inputMinecraftJar.getPath(), flameTmpDir);
+
 				JarInputStream installerStream = new JarInputStream(new FileInputStream(flameInstaller));
 				JarEntry flameEntry = installerStream.getNextJarEntry();
 				while (flameEntry != null) {
@@ -98,30 +97,11 @@ public class FlameInstaller {
 				installerStream.closeEntry();
 				installerStream.close();
 
-				/*JarInputStream comStream = new JarInputStream(new FileInputStream(inputMinecraftJar));
-				JarEntry tempEntry = comStream.getNextJarEntry();
-				while (tempEntry != null) {
-					String name = tempEntry.getName();
-					File destFile = new File(flameTmpDir, name);
-					if (!destFile.exists()) {
-						destFile.getParentFile().mkdirs();
-						destFile.createNewFile();
-						zipper.extractFile(comStream, destFile);
-					}
-					tempEntry = comStream.getNextJarEntry();
-				}
-				comStream.closeEntry();
-				comStream.close();*/
-				//zipper.generateFileList(flameTmpDir);
-				//zipper.addEntry(fullOutput);
 				if (!fullOutput.exists()) {
 					fullOutput.createNewFile();
 				}
-				FileOutputStream fos = new FileOutputStream(fullOutput);
-				ZipOutputStream zipOut = new ZipOutputStream(fos);
-				zipper.zipFile(flameTmpDir, flameTmpDir.getName(), zipOut);
-				zipOut.close();
-				fos.close();
+
+				zipper.zip(flameTmpDir.listFiles(), fullOutput.getPath());
 				/*File jsonIn = new File(text + "-\\" + path + ".json");
 				if (!jsonIn.exists()) throw new FileNotFoundException("No 1.16.2 json found! You must run the version alone before running FlameInstaller");
 
@@ -130,9 +110,8 @@ public class FlameInstaller {
 				if (!jsonOut.exists()) jsonOut.createNewFile();
 				FileWriter writer = new FileWriter(jsonOut);
 				writer.write(parsed);
-				writer.close();
+				writer.close();*/
 
-				outputStream.close();*/
 				Files.walk(Paths.get(flameTmpDir.getPath()))
 						.sorted(Comparator.reverseOrder())
 						.map(Path::toFile)
