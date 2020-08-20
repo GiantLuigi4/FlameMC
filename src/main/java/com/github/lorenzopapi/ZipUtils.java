@@ -14,22 +14,20 @@ public class ZipUtils {
 
 	byte[] BUFFER = new byte[4096];
 
-	public ZipUtils() {}
-
-	public void unZip(String zipFilePath, File dest, Function<String, Boolean> fileValidator) throws IOException {
+	public void unZip(String zipFilePath, File dest) throws IOException { //Function<String, Boolean> fileValidator
 		ZipInputStream zis = new ZipInputStream(new BufferedInputStream(new FileInputStream(zipFilePath)));
 		ZipEntry zipEntry = zis.getNextEntry();
 		while (zipEntry != null) {
-			if (fileValidator.apply(zipEntry.getName())) {
+			//if (fileValidator.apply(zipEntry.getName())) {
 				File newFile = newFile(dest, zipEntry);
 				if (!newFile.exists()) {
 					newFile.getParentFile().mkdirs();
 					newFile.createNewFile();
+					FileOutputStream fos = new FileOutputStream(newFile);
+					readAndCopy(zis, fos);
+					fos.close();
 				}
-				FileOutputStream fos = new FileOutputStream(newFile);
-				readAndCopy(zis, fos);
-				fos.close();
-			}
+			//}
 			zipEntry = zis.getNextEntry();
 		}
 		zis.closeEntry();
@@ -44,12 +42,6 @@ public class ZipUtils {
 			throw new IOException("Entry is outside of the target dir: " + zipEntry.getName());
 		}
 		return destFile;
-	}
-
-	public void extractFile(JarInputStream zipIn, File file) throws IOException {
-		FileOutputStream bos = new FileOutputStream(file, true);
-		readAndCopy(zipIn, bos);
-		bos.close();
 	}
 
 	public void readAndCopy(InputStream is, OutputStream os) throws IOException {
@@ -95,4 +87,14 @@ public class ZipUtils {
 		readAndCopy(bis, zos);
 		zos.closeEntry();
 	}
+
+	/*private void readAndWrite(Reader reader, Writer writer) throws IOException {
+		BufferedReader buff = new BufferedReader(reader);
+		BufferedWriter bufferedWriter = new BufferedWriter(writer);
+		int c;
+		while ((c = buff.read()) != -1) {
+			bufferedWriter.write(c);
+		}
+	}*/
 }
+
