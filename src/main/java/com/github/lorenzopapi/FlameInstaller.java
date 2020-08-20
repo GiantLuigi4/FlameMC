@@ -1,23 +1,21 @@
 package com.github.lorenzopapi;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 import com.tfc.flamemc.FlameLauncher;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
@@ -74,106 +72,133 @@ public class FlameInstaller {
 			clicked.set(false);
 
 			try  {
-				long start = System.nanoTime();
 				log.append("Start Installation");
+				long start = System.nanoTime();
+				ZipUtils zipper = new ZipUtils();
 				String versionPath = setVersionPath.getText();
 				String versionNumber = new File(versionPath).getName();
 				File inputMinecraftJar = new File(versionPath + "\\" + versionNumber + ".jar");
-				File outputFlameDir = new File(versionPath + "-flame");
+				if (!inputMinecraftJar.exists()) throw new RuntimeException("No " + versionNumber + " file found! You must run the version alone before running FlameInstaller!");
 				File flameInstaller = new File(FlameLauncher.getDir() + "\\FlameInstaller.jar");
+				File outputFlameDir = new File(versionPath + "-flame");
+				if (!outputFlameDir.exists()) outputFlameDir.mkdirs();
 				File flameTmpDir = new File(outputFlameDir + "\\tmp");
 				File fullOutput = new File(outputFlameDir + "\\" + versionNumber + "-flame.jar");
-				if (!fullOutput.exists()) {
-					if (!flameTmpDir.exists())
-						flameTmpDir.getParentFile().mkdirs();
-					ZipUtils zipper = new ZipUtils();
-					zipper.unZip(inputMinecraftJar.getPath(), flameTmpDir);
-
-					JarInputStream installerStream = new JarInputStream(new FileInputStream(flameInstaller));
-					JarEntry flameEntry = installerStream.getNextJarEntry();
-					while (flameEntry != null) {
-						String name = flameEntry.getName();
-						if (name.startsWith("com/tfc") && name.endsWith(".class") && !name.contains("FlameLoader")) {
-							File destFile = new File(flameTmpDir, name);
-							if (!destFile.exists()) {
-								destFile.getParentFile().mkdirs();
-								destFile.createNewFile();
-								zipper.extractFile(installerStream, destFile);
-							}
-						}
-						flameEntry = installerStream.getNextJarEntry();
-					}
-					installerStream.closeEntry();
-					installerStream.close();
-
-					if (!fullOutput.exists()) {
-						fullOutput.createNewFile();
-					}
-
-					zipper.zip(flameTmpDir.listFiles(), fullOutput.getPath());
-				}
 				File jsonIn = new File(versionPath + "\\" + versionNumber + ".json");
-				if (!jsonIn.exists()) throw new IOException("No 1.16.2 json found! You must run the version alone before running FlameInstaller");
+				if (!jsonIn.exists()) throw new IOException("No " + versionNumber + " file found! You must run the version alone before running FlameInstaller!");
+				File jsonOut = new File(outputFlameDir + "\\" + versionNumber + "-flame.json");
+				if (!jsonOut.exists()) jsonOut.createNewFile();
 
-				JsonParser parser = new JsonParser();
-				List<String> lines = Files.readAllLines(jsonIn.toPath());
-				JsonElement jsonTree = parser.parse(lines.get(0));
+				Thread unzip1 = null;
+				Thread unzip2 = null;
+				Thread unzip3 = null;
+				Thread unzipInstaller = null;
+				Thread generateJson;
+				Thread finishInstall;
 
-				if (jsonTree.isJsonObject()) {
-					JsonObject jsonObject = jsonTree.getAsJsonObject();
-					JsonElement versionId = jsonObject.get("id");
-					System.out.println(versionId);
+				if (!flameTmpDir.exists()) {
+					flameTmpDir.getParentFile().mkdirs();
+					unzip1 = new Thread(() -> {
+						try {
+							log.append("\nDecompressing assets");
+							zipper.unZip(inputMinecraftJar.getPath(), flameTmpDir, s -> s.startsWith("assets\\"));
+						} catch (Throwable err) {
+							throw new RuntimeException(err);
+						}
+					}, "Unzip1");
+					unzip2 = new Thread(() -> {
+						try {
+							log.append("\nDecompressing data (if Flame is for 1.13+, else doing nothing)");
+							zipper.unZip(inputMinecraftJar.getPath(), flameTmpDir, s -> s.startsWith("data\\"));
+						} catch (Throwable err) {
+							throw new RuntimeException(err);
+						}
+					}, "Unzip2");
+					unzip3 = new Thread(() -> {
+						try {
+							log.append("\nDecompressing classes and Manifests");
+							zipper.unZip(inputMinecraftJar.getPath(), flameTmpDir, s -> s.endsWith("class"));
+						} catch (Throwable err) {
+							throw new RuntimeException(err);
+						}
+					}, "Unzip3");
+					unzipInstaller = new Thread(() -> {
+						try {
+							log.append("\nDecompressing Installer");
+							JarInputStream installerStream = new JarInputStream(new FileInputStream(flameInstaller));
+							JarEntry flameEntry = installerStream.getNextJarEntry();
+							while (flameEntry != null) {
+								String name = flameEntry.getName();
+								if (name.startsWith("com/tfc") && name.endsWith(".class") && !name.contains("FlameLoader")) {
+									File destFile = new File(flameTmpDir, name);
+									if (!destFile.exists()) {
+										destFile.getParentFile().mkdirs();
+										destFile.createNewFile();
+										zipper.extractFile(installerStream, destFile);
+									}
+								}
+								flameEntry = installerStream.getNextJarEntry();
+							}
+							installerStream.closeEntry();
+							installerStream.close();
+						} catch (Throwable err) {
+							throw new RuntimeException(err);
+						}
+					}, "Unzip installer");
+					unzip1.start();
+					unzip2.start();
+					unzip3.start();
+					unzipInstaller.start();
 				}
 
-				/*String parsed = JSONParser.quote(String.valueOf(Files.readAllLines(Paths.get(jsonIn.getPath()))));
-				File jsonOut = new File(text + "-flame\\" + path + "-flame.json");
-				if (!jsonOut.exists()) jsonOut.createNewFile();
-				FileWriter writer = new FileWriter(jsonOut);
-				writer.write(parsed);
-				writer.close();*/
+				if (jsonOut.length() == 0) {
+					generateJson = new Thread(() -> {
+						log.append("\nGenerating Json");
+						MinecraftLaunchJson launchJson = new MinecraftLaunchJson(versionNumber + "-flame", versionNumber, "com.tfc.flamemc.FlameLauncher");
 
-				if (flameTmpDir.exists())
-					Files.walk(Paths.get(flameTmpDir.getPath()))
-						.sorted(Comparator.reverseOrder())
-						.map(Path::toFile)
-						.forEach(File::delete);
-				log.append("\nDone!\n");
-				long stop = System.nanoTime();
-				log.append("\nTime passed == " + (stop - start));
+						launchJson.arguments.game = new ArrayList<>();
+						String mavenUrl = "https://repo1.maven.org/maven2/";
+						String asmRepo = "org.ow2.asm:asm";
+						String asmVer = ":8.0.1";
+						launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + asmVer, mavenUrl));
+						launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + "-commons" + asmVer, mavenUrl));
+						launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + "-tree" + asmVer, mavenUrl));
+						launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + "-util" + asmVer, mavenUrl));
+
+						try (Writer writer = Files.newBufferedWriter(jsonOut.toPath())) {
+							Gson gson = new Gson();
+							JsonElement tree = gson.toJsonTree(launchJson);
+							JsonWriter jsonWriter= new JsonWriter(writer);
+							jsonWriter.setIndent("  ");
+							gson.toJson(tree, jsonWriter);
+						} catch (Throwable ex) {
+							throw new RuntimeException(ex);
+						}
+					});
+					generateJson.start();
+				}
+
+				finishInstall = new Thread(() -> {
+					try {
+						if (flameTmpDir.exists())
+							Files.walk(Paths.get(flameTmpDir.getPath()))
+									.sorted(Comparator.reverseOrder())
+									.map(Path::toFile)
+									.forEach(File::delete);
+						log.append("\nDone!\n");
+						long stop = System.nanoTime();
+						installButton.setEnabled(true);
+						log.append("\nTime passed == " + (stop - start));
+					} catch (Throwable err) {
+						throw new RuntimeException(err);
+					}
+				});
+
+				//finishInstall.start();
 			} catch (Throwable err) {
 				throw new RuntimeException(err);
 			}
 		}
 	}
-
-	//SAmple reading
-	public static void readApp(JsonReader jsonReader) throws IOException{
-		jsonReader.beginObject();
-		while (jsonReader.hasNext()) {
-			String name = jsonReader.nextName();
-			System.out.println(name);
-			if (name.contains("app")){
-				jsonReader.beginObject();
-				while (jsonReader.hasNext()) {
-					String n = jsonReader.nextName();
-					if (n.equals("name")){
-						System.out.println(jsonReader.nextString());
-					}
-					if (n.equals("age")){
-						System.out.println(jsonReader.nextInt());
-					}
-					if (n.equals("messages")){
-						jsonReader.beginArray();
-						while  (jsonReader.hasNext()) {
-							System.out.println(jsonReader.nextString());
-						}
-						jsonReader.endArray();
-					}
-				}
-				jsonReader.endObject();
-			}
-
-		}
-		jsonReader.endObject();
-	}
 }
+
