@@ -1,5 +1,6 @@
 package com.github.lorenzopapi;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -10,9 +11,9 @@ import java.util.function.Function;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-public class ZipUtils {
+public class InstallerUtils {
 
-	public void unzip(String targetDir, String zipFilename, Function<String, Boolean> fileV) {
+	public static void unzip(String targetDir, String zipFilename, Function<String, Boolean> fileV) {
 		Path targetDirPath = Paths.get(targetDir);
 		try (ZipFile zipFile = new ZipFile(zipFilename)) {
 			zipFile.stream()
@@ -39,6 +40,22 @@ public class ZipUtils {
 		} catch (IOException e) {
 			throw new RuntimeException("Error processing zip entry '" + entry.getName() + "': " + e, e);
 		}
+	}
+
+	public static File findVersionsDir() {
+		String home = System.getProperty("user.home", ".");
+		String os = System.getProperty("os.name").toLowerCase();
+		File dir;
+		File homeDir = new File(home);
+
+		if (os.contains("win") && System.getenv("APPDATA") != null) {
+			dir = new File(System.getenv("APPDATA"), ".minecraft" + File.separator + "versions");
+		} else if (os.contains("mac")) {
+			dir = new File(homeDir, "Library" + File.separator + "Application Support" + File.separator + "minecraft" + File.separator + "versions");
+		} else {
+			dir = new File(homeDir, ".minecraft" + File.separator + "versions");
+		}
+		return dir;
 	}
 }
 

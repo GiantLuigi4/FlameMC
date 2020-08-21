@@ -3,9 +3,6 @@ package com.tfc.flamemc;
 import com.tfc.flame.FlameConfig;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;

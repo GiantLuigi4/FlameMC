@@ -23,25 +23,18 @@ public class FlameInstaller {
 
 	private static final FlameInstaller INSTANCE = new FlameInstaller();
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws ClassNotFoundException, UnsupportedLookAndFeelException, InstantiationException, IllegalAccessException {
+		UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		AtomicBoolean clicked = new AtomicBoolean(false);
 		JFrame mainFrame = new JFrame("Flame Loader Installer");
-		if (!(System.getProperty("os.name").contains("Windows"))) {
-			mainFrame.setTitle("Incompatible!");
-			JTextField error = new JTextField();
-			error.setText("OS is not compatible (for now)");
-			JButton exit = new JButton();
-			exit.addActionListener(e -> System.exit(1));
-		}
-		JPanel panel = new JPanel();
 
-		mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		JPanel panel = new JPanel();
 		JPanel textPanel = new JPanel();
 		textPanel.setSize(640, 320);
 		JTextField setVersionPath = new JTextField();
 		setVersionPath.setSize(640, 320);
-		setVersionPath.setText(System.getenv("APPDATA") + "\\.minecraft\\versions\\1.16.2");
-		panel.add(setVersionPath);
+		setVersionPath.setText(InstallerUtils.findVersionsDir() + File.separator + "1.16.2");
+		textPanel.add(setVersionPath);
 
 		JPanel installPanel = new JPanel();
 		JButton installButton = new JButton("Install for 1.16.2");
@@ -50,14 +43,16 @@ public class FlameInstaller {
 			installButton.setEnabled(false);
 			clicked.set(true);
 		});
-		installPanel.setLocation(50, 0);
+		installPanel.setLocation(0, -100);
 		installPanel.add(installButton);
 
 		JPanel logPanel = new JPanel();
-		logPanel.setSize(640, 320);
+		logPanel.setSize(200, 200);
 		logPanel.setMinimumSize(logPanel.getSize());
 		logPanel.setMaximumSize(logPanel.getSize());
 		TextArea log = new TextArea();
+		log.setBackground(new Color(12632256));
+		log.setEditable(false);
 		logPanel.add(log);
 
 		panel.add(textPanel);
@@ -83,34 +78,40 @@ public class FlameInstaller {
 			clicked.set(false);
 
 			try  {
+				log.setText("");
 				log.append("\nStart Installation");
 				long start = System.nanoTime();
-				ZipUtils zipper = new ZipUtils();
 				String versionPath = setVersionPath.getText();
 				String versionNumber = new File(versionPath).getName();
-				File flameInstaller = new File(FlameLauncher.getDir() + "\\FlameInstaller.jar");
-				File inputMinecraftJar = new File(versionPath + "\\" + versionNumber + ".jar");
-				if (!inputMinecraftJar.exists()) throw new RuntimeException("No " + versionNumber + " file found! You must run the version alone before running FlameInstaller!");
+				File flameInstaller = new File(FlameLauncher.getDir() + File.separator + "FlameInstaller.jar");
+				File inputMinecraftJar = new File(versionPath + File.separator + versionNumber + ".jar");
+				if (!inputMinecraftJar.exists()) {
+					log.setForeground(Color.red);
+					log.append("\nERROR:No " + versionNumber + " version file found! You must run the version alone before running FlameInstaller!");
+					throw new IOException("Version not found.");
+				}
 				File outputFlameDir = new File(versionPath + "-flame");
 				if (!outputFlameDir.exists()) outputFlameDir.mkdirs();
-				File flameTmpDir = new File(outputFlameDir + "\\tmp");
-				File fullOutput = new File(outputFlameDir + "\\" + versionNumber + "-flame.jar");
-				if (!fullOutput.exists()) fullOutput.createNewFile();
-				File jsonIn = new File(versionPath + "\\" + versionNumber + ".json");
-				if (!jsonIn.exists()) throw new IOException("No " + versionNumber + " file found! You must run the version alone before running FlameInstaller!");
-				File jsonOut = new File(outputFlameDir + "\\" + versionNumber + "-flame.json");
-				if (!flameTmpDir.exists() || flameTmpDir.length() == 0) {
+				File flameTmpDir = new File(outputFlameDir + File.separator + "tmp");
+				File fullOutput = new File(outputFlameDir + File.separator + versionNumber + "-flame.jar");
+				File jsonIn = new File(versionPath + File.separator + versionNumber + ".json");
+				if (!jsonIn.exists()) {
+					log.setForeground(Color.red);
+					log.append("\nERROR:No " + versionNumber + " version file found! You must run the version alone before running FlameInstaller!");
+					throw new IOException("Version not found.");
+				}
+				File jsonOut = new File(outputFlameDir + File.separator + versionNumber + "-flame.json");
+
+				if ((!flameTmpDir.exists() || flameTmpDir.length() == 0) && !fullOutput.exists()) {
 					log.append("\nUnzipping flame...");
-					zipper.unzip(flameTmpDir.getPath(), flameInstaller.getPath(), name -> (name.startsWith("com/tfc/") && name.endsWith(".class") && !name.contains("FlameLoader")));
-				} else {
-					log.append("\nFlame already unzipped");
+					InstallerUtils.unzip(flameTmpDir.getPath(), flameInstaller.getPath(), name -> (name.startsWith("com/tfc/") && name.endsWith(".class") && !name.contains("FlameLoader")));
 				}
 
-				if (fullOutput.length() == 0) {
+				if (!fullOutput.exists()) {
 					ZipFile zipFile = new ZipFile(fullOutput);
 					log.append("\nZipping FlameMC...");
 					Files.copy(Files.newInputStream(inputMinecraftJar.toPath()), fullOutput.toPath(), StandardCopyOption.REPLACE_EXISTING);
-					zipFile.addFolder(new File(flameTmpDir + "\\com\\"));
+					zipFile.addFolder(new File(flameTmpDir + File.separator + "com"));
 					log.append("\nZipping finished");
 				} else {
 					log.append("\nFlameMC version already created");
@@ -119,7 +120,6 @@ public class FlameInstaller {
 				if (!jsonOut.exists()) {
 					log.append("\nWriting Json");
 					MinecraftLaunchJson launchJson = new MinecraftLaunchJson(versionNumber + "-flame", versionNumber, "com.tfc.flamemc.FlameLauncher");
-
 					launchJson.arguments.game = new ArrayList<>();
 					String mavenUrl = "https://repo1.maven.org/maven2/";
 					String asmRepo = "org.ow2.asm:asm";
@@ -144,20 +144,23 @@ public class FlameInstaller {
 				if (flameTmpDir.exists()) {
 					log.append("\nDeleting temps...");
 					Files.walk(Paths.get(flameTmpDir.getPath()))
-						.sorted(Comparator.reverseOrder())
-						.map(Path::toFile)
-						.forEach(File::delete);
+							.sorted(Comparator.reverseOrder())
+							.map(Path::toFile)
+							.forEach(File::delete);
 					log.append("\nTemps deleted");
 				}
 				long stop = System.nanoTime();
 				log.append("\nDone!\n");
 				installButton.setEnabled(true);
 				setVersionPath.setEnabled(true);
-				log.append("\nInstallation took " + (stop - start) / 1000000000 + " seconds.\n");
+				long timePassed = (stop - start) / 1000000;
+				String timePass = Long.toString(timePassed);
+				log.append("\nInstallation took " + timePass + " milliseconds.\n");
 			} catch (Throwable err) {
 				for (StackTraceElement element : err.getStackTrace()) {
 					log.append("\n" + element);
 				}
+				log.append("\nRestart installer");
 				throw new RuntimeException(err);
 			}
 		}
