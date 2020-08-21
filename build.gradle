@@ -93,6 +93,6 @@ dependencies {
 
 jar {
     manifest {
-        attributes 'Main-Class': 'FlameInstaller'
+        attributes 'Main-Class': 'com.github.lorenzopapi.FlameInstaller'
     }
 }

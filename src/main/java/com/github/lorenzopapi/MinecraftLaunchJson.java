@@ -13,8 +13,8 @@ public class MinecraftLaunchJson {
 
 	public String id;
 	public String inheritsFrom;
-	public String releaseTime = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").format(new Date());
-	public String time = releaseTime;
+//	public String releaseTime = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").format(new Date());
+//	public String time = releaseTime;
 	public String type = "release";
 	public String mainClass;
 	public Arguments arguments = new Arguments();

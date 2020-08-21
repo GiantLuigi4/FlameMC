@@ -19,6 +19,7 @@ public class ZipUtils {
 		ZipEntry zipEntry = zis.getNextEntry();
 		while (zipEntry != null) {
 			//if (fileValidator.apply(zipEntry.getName())) {
+			if (!zipEntry.isDirectory()) {
 				File newFile = newFile(dest, zipEntry);
 				if (!newFile.exists()) {
 					newFile.getParentFile().mkdirs();
@@ -27,6 +28,7 @@ public class ZipUtils {
 					readAndCopy(zis, fos);
 					fos.close();
 				}
+			}
 			//}
 			zipEntry = zis.getNextEntry();
 		}

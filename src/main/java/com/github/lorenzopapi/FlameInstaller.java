@@ -75,7 +75,7 @@ public class FlameInstaller {
 			clicked.set(false);
 
 			try  {
-				log.append("Start Installation");
+				log.append("\nStart Installation");
 				long start = System.nanoTime();
 				ZipUtils zipper = new ZipUtils();
 				String versionPath = setVersionPath.getText();
@@ -93,9 +93,12 @@ public class FlameInstaller {
 				File jsonOut = new File(outputFlameDir + "\\" + versionNumber + "-flame.json");
 				if (!jsonOut.exists()) jsonOut.createNewFile();
 
+				log.append("\nUnzipping Minecraft");
 				zipper.unZip(inputMinecraftJar.getPath(), flameTmpDir);
+				log.append("\nUnzipping Flame");
 				zipper.unZip(flameInstaller.getPath(), flameTmpDir);
-
+				
+				log.append("\nZipping FlameMC");
 				zipper.zip(flameTmpDir.listFiles(), fullOutput.getPath());
 
 				log.append("\nGenerating Json");
@@ -109,6 +112,7 @@ public class FlameInstaller {
 				launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + "-commons" + asmVer, mavenUrl));
 				launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + "-tree" + asmVer, mavenUrl));
 				launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + "-util" + asmVer, mavenUrl));
+				launchJson.libraries.add(new MinecraftLaunchJson.Library("org.apache.bcel:bcel:6.0", mavenUrl));
 
 				try (Writer writer = Files.newBufferedWriter(jsonOut.toPath())) {
 					Gson gson = new Gson();
@@ -131,6 +135,9 @@ public class FlameInstaller {
 				//System.exit(0);
 
 			} catch (Throwable err) {
+				for (StackTraceElement element : err.getStackTrace()) {
+					log.append("\n"+element);
+				}
 				throw new RuntimeException(err);
 			}
 		}
