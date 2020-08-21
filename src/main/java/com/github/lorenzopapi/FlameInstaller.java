@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.stream.JsonWriter;
 import com.tfc.flamemc.FlameLauncher;
+import net.lingala.zip4j.ZipFile;
 
 import javax.swing.*;
 import java.awt.*;
@@ -13,6 +14,7 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -44,6 +46,7 @@ public class FlameInstaller {
 		JPanel installPanel = new JPanel();
 		JButton installButton = new JButton("Install for 1.16.2");
 		installButton.addActionListener(e -> {
+			setVersionPath.setEnabled(false);
 			installButton.setEnabled(false);
 			clicked.set(true);
 		});
@@ -70,6 +73,11 @@ public class FlameInstaller {
 
 	public void install(JFrame mainFrame, TextArea log, AtomicBoolean clicked, JTextField setVersionPath, JButton installButton) {
 		while (mainFrame.isVisible()) {
+			while (installButton.isEnabled()) {
+				String versionPath = setVersionPath.getText();
+				String versionNumber = new File(versionPath).getName();
+				installButton.setText("Install for " + versionNumber);
+			}
 			while (!clicked.get());
 
 			clicked.set(false);
@@ -91,101 +99,25 @@ public class FlameInstaller {
 				File jsonIn = new File(versionPath + "\\" + versionNumber + ".json");
 				if (!jsonIn.exists()) throw new IOException("No " + versionNumber + " file found! You must run the version alone before running FlameInstaller!");
 				File jsonOut = new File(outputFlameDir + "\\" + versionNumber + "-flame.json");
-				if (!jsonOut.exists()) jsonOut.createNewFile();
-
-				log.append("\nUnzipping Minecraft");
-				zipper.unZip(inputMinecraftJar.getPath(), flameTmpDir);
-				log.append("\nUnzipping Flame");
-				zipper.unZip(flameInstaller.getPath(), flameTmpDir);
-				
-				log.append("\nZipping FlameMC");
-				zipper.zip(flameTmpDir.listFiles(), fullOutput.getPath());
-
-				log.append("\nGenerating Json");
-				MinecraftLaunchJson launchJson = new MinecraftLaunchJson(versionNumber + "-flame", versionNumber, "com.tfc.flamemc.FlameLauncher");
-
-				launchJson.arguments.game = new ArrayList<>();
-				String mavenUrl = "https://repo1.maven.org/maven2/";
-				String asmRepo = "org.ow2.asm:asm";
-				String asmVer = ":8.0.1";
-				launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + asmVer, mavenUrl));
-				launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + "-commons" + asmVer, mavenUrl));
-				launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + "-tree" + asmVer, mavenUrl));
-				launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + "-util" + asmVer, mavenUrl));
-				launchJson.libraries.add(new MinecraftLaunchJson.Library("org.apache.bcel:bcel:6.0", mavenUrl));
-
-				try (Writer writer = Files.newBufferedWriter(jsonOut.toPath())) {
-					Gson gson = new Gson();
-					JsonElement tree = gson.toJsonTree(launchJson);
-					JsonWriter jsonWriter = new JsonWriter(writer);
-					gson.toJson(tree, jsonWriter);
+				if (!flameTmpDir.exists() || flameTmpDir.length() == 0) {
+					log.append("\nUnzipping flame...");
+					zipper.unzip(flameTmpDir.getPath(), flameInstaller.getPath(), name -> (name.startsWith("com/tfc/") && name.endsWith(".class") && !name.contains("FlameLoader")));
+				} else {
+					log.append("\nFlame already unzipped");
 				}
 
-				long stop = System.nanoTime();
-				if (flameTmpDir.exists()) {
-					Files.walk(Paths.get(flameTmpDir.getPath()))
-						.sorted(Comparator.reverseOrder())
-						.map(Path::toFile)
-						.forEach(File::delete);
+				if (fullOutput.length() == 0) {
+					ZipFile zipFile = new ZipFile(fullOutput);
+					log.append("\nZipping FlameMC...");
+					Files.copy(Files.newInputStream(inputMinecraftJar.toPath()), fullOutput.toPath(), StandardCopyOption.REPLACE_EXISTING);
+					zipFile.addFolder(new File(flameTmpDir + "\\com\\"));
+					log.append("\nZipping finished");
+				} else {
+					log.append("\nFlameMC version already created");
 				}
-				log.append("\nDone!\n");
-				installButton.setEnabled(true);
-				log.append("\nTime passed == " + (stop - start));
-				//wait(10000);
-				//System.exit(0);
 
-			} catch (Throwable err) {
-				for (StackTraceElement element : err.getStackTrace()) {
-					log.append("\n"+element);
-				}
-				throw new RuntimeException(err);
-			}
-		}
-	}
-}
-
-/*Thread unzipAssetsThread = new Thread(() -> {
-					try {
-						log.append("\nDecompressing assets");
-						zipper.unZip(inputMinecraftJar.getPath(), flameTmpDir, s -> s.startsWith("assets"));
-						log.append("\nFinished assets decompression");
-					} catch (Throwable err) {
-						throw new RuntimeException(err);
-					}
-				}, "Unzip Assets");
-
-				Thread unzipDataThread = new Thread(() -> {
-					try {
-						log.append("\nDecompressing data (if Flame is for 1.13+, else doing nothing)");
-						zipper.unZip(inputMinecraftJar.getPath(), flameTmpDir, s -> s.startsWith("data"));
-						log.append("\nFinished data decompression");
-					} catch (Throwable err) {
-						throw new RuntimeException(err);
-					}
-				}, "Unzip Data");
-
-				Thread unzipClassesThread = new Thread(() -> {
-					try {
-						log.append("\nDecompressing classes");
-						zipper.unZip(inputMinecraftJar.getPath(), flameTmpDir, s -> s.endsWith(".class") || s.startsWith("META"));
-						log.append("\nFinished classes decompression");
-					} catch (Throwable err) {
-						throw new RuntimeException(err);
-					}
-				}, "Unzip Classes");
-
-				Thread unzipInstallerThread = new Thread(() -> {
-					try {
-						log.append("\nDecompressing Installer");
-						zipper.unZip(flameInstaller.getPath(), flameTmpDir, name -> name.startsWith("com/tfc") && name.endsWith(".class") && !name.contains("FlameLoader"));
-						log.append("\nFinished decompressing installer");
-					} catch (Throwable err) {
-						throw new RuntimeException(err);
-					}
-				}, "Unzip Installer");
-
-				Thread generateJson = new Thread(() -> {
-					log.append("\nGenerating Json");
+				if (!jsonOut.exists()) {
+					log.append("\nWriting Json");
 					MinecraftLaunchJson launchJson = new MinecraftLaunchJson(versionNumber + "-flame", versionNumber, "com.tfc.flamemc.FlameLauncher");
 
 					launchJson.arguments.game = new ArrayList<>();
@@ -196,61 +128,38 @@ public class FlameInstaller {
 					launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + "-commons" + asmVer, mavenUrl));
 					launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + "-tree" + asmVer, mavenUrl));
 					launchJson.libraries.add(new MinecraftLaunchJson.Library(asmRepo + "-util" + asmVer, mavenUrl));
+					launchJson.libraries.add(new MinecraftLaunchJson.Library("org.apache.bcel:bcel:6.0", mavenUrl));
 
 					try (Writer writer = Files.newBufferedWriter(jsonOut.toPath())) {
 						Gson gson = new Gson();
 						JsonElement tree = gson.toJsonTree(launchJson);
-						JsonWriter jsonWriter= new JsonWriter(writer);
+						JsonWriter jsonWriter = new JsonWriter(writer);
 						gson.toJson(tree, jsonWriter);
-					} catch (Throwable ex) {
-						throw new RuntimeException(ex);
 					}
-				});
-
-				Thread zipThread = new Thread(() -> {
-					try {
-						zipper.zip(flameTmpDir.listFiles(), fullOutput.getPath());
-					} catch (Throwable e) {
-						throw new RuntimeException(e);
-					}
-				}, "Zip Thread");
-
-				Thread endThread = new Thread(() -> {
-					long stop = System.nanoTime();
-					/*if (flameTmpDir.exists()) {
-						try {
-							Files.walk(Paths.get(flameTmpDir.getPath()))
-									.sorted(Comparator.reverseOrder())
-									.map(Path::toFile)
-									.forEach(File::delete);
-						} catch (IOException ignored) {}
-					}
-					log.append("\nDone!\n");
-					installButton.setEnabled(true);
-					log.append("\nTime passed == " + (stop - start));
-					//System.exit(0);
-				});
-
-				if (!flameTmpDir.exists() && fullOutput.length() == 0) {
-					flameTmpDir.getParentFile().mkdirs();
-					unzipAssetsThread.start();
-					unzipDataThread.start();
-					unzipClassesThread.start();
-					unzipInstallerThread.start();
-					unzipAssetsThread.join();
-					unzipClassesThread.join();
-					unzipDataThread.join();
-					unzipInstallerThread.join();
-					zipThread.start();
+					log.append("\nJson written");
+				} else {
+					log.append("\nJson already generated");
 				}
 
-				if (jsonOut.length() == 0)
-					generateJson.start();
-
-				generateJson.join();
-				unzipAssetsThread.join();
-				unzipClassesThread.join();
-				unzipDataThread.join();
-				unzipInstallerThread.join();
-				zipThread.join();
-				endThread.start();*/
+				if (flameTmpDir.exists()) {
+					log.append("\nDeleting temps...");
+					Files.walk(Paths.get(flameTmpDir.getPath()))
+						.sorted(Comparator.reverseOrder())
+						.map(Path::toFile)
+						.forEach(File::delete);
+					log.append("\nTemps deleted");
+				}
+				long stop = System.nanoTime();
+				log.append("\nDone!\n");
+				installButton.setEnabled(true);
+				setVersionPath.setEnabled(true);
+				log.append("\nInstallation took " + (stop - start) / 1000000000 + " seconds.\n");
+			} catch (Throwable err) {
+				for (StackTraceElement element : err.getStackTrace()) {
+					log.append("\n" + element);
+				}
+				throw new RuntimeException(err);
+			}
+		}
+	}
+}

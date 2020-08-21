@@ -1,102 +1,44 @@
 package com.github.lorenzopapi;
 
-import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.function.Function;
-import java.util.jar.JarInputStream;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
+import java.util.zip.ZipFile;
 
 public class ZipUtils {
 
-	byte[] BUFFER = new byte[4096];
+	public void unzip(String targetDir, String zipFilename, Function<String, Boolean> fileV) {
+		Path targetDirPath = Paths.get(targetDir);
+		try (ZipFile zipFile = new ZipFile(zipFilename)) {
+			zipFile.stream()
+					.parallel() // enable multi-threading
+					.forEach(e -> unzipEntry(zipFile, e, targetDirPath, fileV));
+		} catch (IOException e) {
+			throw new RuntimeException("Error opening zip file '" + zipFilename + "': " + e, e);
+		}
+	}
 
-	public void unZip(String zipFilePath, File dest) throws IOException { //Function<String, Boolean> fileValidator
-		ZipInputStream zis = new ZipInputStream(new BufferedInputStream(new FileInputStream(zipFilePath)));
-		ZipEntry zipEntry = zis.getNextEntry();
-		while (zipEntry != null) {
-			//if (fileValidator.apply(zipEntry.getName())) {
-			if (!zipEntry.isDirectory()) {
-				File newFile = newFile(dest, zipEntry);
-				if (!newFile.exists()) {
-					newFile.getParentFile().mkdirs();
-					newFile.createNewFile();
-					FileOutputStream fos = new FileOutputStream(newFile);
-					readAndCopy(zis, fos);
-					fos.close();
+	private static void unzipEntry(ZipFile zipFile, ZipEntry entry, Path targetDir, Function<String, Boolean> fileV) {
+		try {
+			Path targetPath = targetDir.resolve(Paths.get(entry.getName()));
+			if (fileV.apply(entry.getName())) {
+				if (Files.isDirectory(targetPath)) {
+					Files.createDirectories(targetPath);
+				} else {
+					Files.createDirectories(targetPath.getParent());
+					try (InputStream in = zipFile.getInputStream(entry)) {
+						Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
+					}
 				}
 			}
-			//}
-			zipEntry = zis.getNextEntry();
-		}
-		zis.closeEntry();
-		zis.close();
-	}
-
-	public static File newFile(File destinationDir, ZipEntry zipEntry) throws IOException {
-		File destFile = new File(destinationDir, zipEntry.getName());
-		String destDirPath = destinationDir.getCanonicalPath();
-		String destFilePath = destFile.getCanonicalPath();
-		if (!destFilePath.startsWith(destDirPath + File.separator)) {
-			throw new IOException("Entry is outside of the target dir: " + zipEntry.getName());
-		}
-		return destFile;
-	}
-
-	public void readAndCopy(InputStream is, OutputStream os) throws IOException {
-		int length;
-		while ((length = is.read(BUFFER)) != -1)
-			os.write(BUFFER, 0, length);
-	}
-
-	public void zip(List<File> listFiles, String destZipFile) throws IOException {
-		ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(destZipFile));
-		for (File file : listFiles) {
-			if (file.isDirectory()) {
-				zipDirectory(file, file.getName(), zos);
-			} else {
-				zipFile(file, zos);
-			}
-		}
-		zos.flush();
-		zos.close();
-	}
-
-	private void zipDirectory(File folder, String parentFolder, ZipOutputStream zos) throws IOException {
-		for (File file : folder.listFiles()) {
-			if (file.isDirectory()) {
-				zipDirectory(file, parentFolder + "/" + file.getName(), zos);
-				continue;
-			}
-			zos.putNextEntry(new ZipEntry(parentFolder + "/" + file.getName()));
-			BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file));
-			readAndCopy(bis, zos);
-			zos.closeEntry();
+		} catch (IOException e) {
+			throw new RuntimeException("Error processing zip entry '" + entry.getName() + "': " + e, e);
 		}
 	}
-
-	public void zip(File[] files, String destZipFile) throws IOException {
-		List<File> listFiles = new ArrayList<>(Arrays.asList(files));
-		zip(listFiles, destZipFile);
-	}
-
-	private void zipFile(File file, ZipOutputStream zos) throws IOException {
-		zos.putNextEntry(new ZipEntry(file.getName()));
-		BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file));
-		readAndCopy(bis, zos);
-		zos.closeEntry();
-	}
-
-	/*private void readAndWrite(Reader reader, Writer writer) throws IOException {
-		BufferedReader buff = new BufferedReader(reader);
-		BufferedWriter bufferedWriter = new BufferedWriter(writer);
-		int c;
-		while ((c = buff.read()) != -1) {
-			bufferedWriter.write(c);
-		}
-	}*/
 }
 
