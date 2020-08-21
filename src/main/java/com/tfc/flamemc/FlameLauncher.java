@@ -3,6 +3,8 @@ package com.tfc.flamemc;
 import com.tfc.flame.*;
 
 import javax.swing.*;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.FileWriter;
 import java.lang.reflect.InvocationTargetException;
@@ -10,7 +12,12 @@ import java.net.URL;
 import java.util.*;
 
 public class FlameLauncher {
-	private static final String dir = System.getProperty("user.dir");
+	private static String dir = System.getProperty("user.dir");
+	private static boolean isDev =
+			new File(dir + "\\src").exists() &&
+					(new File(dir + "\\build").exists() ||
+							new File(dir + "\\build.gradle").exists()
+					);
 	
 	public static ArrayList<Class> lockedClasses = new ArrayList<>();
 	
@@ -20,16 +27,19 @@ public class FlameLauncher {
 	public static FlameURLLoader getLoader() {
 		return loader;
 	}
-
+	
 	public static String getDir() {
 		return dir;
 	}
-
+	
 	public static final FlameLog field = new FlameLog();
 	
 	protected static final ArrayList<String> additionalURLs = new ArrayList<>();
 	
 	public static void main(String[] args) {
+		if (isDev) {
+			dir = dir + "\\run";
+		}
 		field.append("Startup Flame\n");
 		field.append(Arrays.toString(args));
 		FlameConfig.field = field;
@@ -138,6 +148,31 @@ public class FlameLauncher {
 		if (log) {
 			frame = new JFrame("Flame MC log: " + version);
 			frame.add(field);
+			String finalVersion = version;
+			frame.addWindowListener(new WindowListener() {
+				@Override public void windowOpened(WindowEvent e) {}
+				
+				@Override
+				public void windowClosing(WindowEvent e) {
+					exit(null,null,false,true,dir, finalVersion);
+				}
+				
+				@Override
+				public void windowClosed(WindowEvent e) {
+					exit(null,null,false,true,dir, finalVersion);
+				}
+				
+				@Override public void windowIconified(WindowEvent e) { }
+				
+				@Override public void windowDeiconified(WindowEvent e) { }
+				
+				@Override public void windowActivated(WindowEvent e) { }
+				
+				@Override
+				public void windowDeactivated(WindowEvent e) {
+					exit(null,null,false,true,dir, finalVersion);
+				}
+			});
 			frame.setSize(1000, 1000);
 			frame.setVisible(true);
 		}
@@ -195,7 +230,7 @@ public class FlameLauncher {
 				for (String s : mods) {
 					File fi1 = new File(s);
 					try {
-						Object mod = loader.load("entries." + fi1.getName().replace(".zip", "").replace(".jar", "") + ".Main", false).newInstance();
+						Object mod = loader.load("entries." + fi1.getName().split("-")[0].replace("-", "").replace(".zip", "").replace(".jar", "") + ".Main", false).newInstance();
 						mods_list.add(mod);
 					} catch (Throwable err) {
 						FlameConfig.logError(err);
@@ -206,7 +241,7 @@ public class FlameLauncher {
 			}
 			mods_list.forEach(mod -> {
 				try {
-					if (loader.load("com.tfc.flame.IFlameAPIMod",false).isInstance(mod)) {
+					if (loader.load("com.tfc.flame.IFlameAPIMod", false).isInstance(mod)) {
 						mod.getClass().getMethod("setupAPI", String[].class).invoke(mod, (Object) args);
 					}
 				} catch (Throwable err) {
@@ -234,6 +269,9 @@ public class FlameLauncher {
 					FlameConfig.logError(err);
 				}
 			});
+			if (version.contains("fabric")) {
+				System.setProperty("fabric.gameJarPath", dir + "\\versions\\" + version + "\\" + version + ".jar");
+			}
 			loader.loadClass(main_class).getMethod("main", String[].class).invoke(null, (Object) args);
 		} catch (Throwable err) {
 			FlameConfig.logError(err);
