@@ -3,7 +3,7 @@ package com.github.lorenzopapi;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MinecraftLaunchJson {
+public class FlamedJson {
 
 	public String id;
 	public String inheritsFrom;
@@ -15,7 +15,7 @@ public class MinecraftLaunchJson {
 	public Downloads downloads = new Downloads();
 	public List<Library> libraries = new ArrayList<>();
 
-	public MinecraftLaunchJson(String id, String inheritsFrom, String mainClass) {
+	public FlamedJson(String id, String inheritsFrom, String mainClass) {
 		this.id = id;
 		this.inheritsFrom = inheritsFrom;
 		this.mainClass = mainClass;
@@ -36,5 +36,4 @@ public class MinecraftLaunchJson {
 	}
 
 	public static class Downloads {}
-
 }
