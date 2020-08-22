@@ -20,6 +20,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FlameInstaller {
@@ -65,6 +66,7 @@ public class FlameInstaller {
 		mainFrame.add(panel);
 		mainFrame.pack();
 		mainFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+		mainFrame.setLocationRelativeTo(null);
 		mainFrame.setVisible(true);
 
 		INSTANCE.install(mainFrame, log, clicked, setVersionPath, installButton);
@@ -123,24 +125,11 @@ public class FlameInstaller {
 						JsonParser parser = new JsonParser();
 						JsonElement tree = parser.parse(Files.newBufferedReader(jsonIn.toPath()));
 
-						JsonObject jsonObject = tree.getAsJsonObject();
-						for (Map.Entry<String, JsonElement> jsonEntry : jsonObject.entrySet()) {
-							if (jsonEntry.getKey().equals("downloads")) {
-								JsonObject downloads = jsonEntry.getValue().getAsJsonObject();
-								System.out.println("Found downloads");
-								for (Map.Entry<String, JsonElement> downloadEntry : downloads.entrySet()) {
-									if (downloadEntry.getKey().equals("client")) {
-										JsonObject client = downloadEntry.getValue().getAsJsonObject();
-										System.out.println("Found client");
-										for (Map.Entry<String, JsonElement> clientEntry : client.entrySet()) {
-											if (clientEntry.getKey().equals("url")) {
-												InstallerUtils.downloadFromUrl(clientEntry.getValue().getAsString(), fullOutput.getPath());
-												break;
-											}
-										}
-										break;
-									}
-								}
+						JsonObject downloads = InstallerUtils.readJsonObject(tree.getAsJsonObject(), s -> s.equals("downloads"));
+						JsonObject client = InstallerUtils.readJsonObject(Objects.requireNonNull(downloads).getAsJsonObject(), s -> s.equals("client"));
+						for (Map.Entry<String, JsonElement> clientEntry : Objects.requireNonNull(client).entrySet()) {
+							if (clientEntry.getKey().equals("url")) {
+								InstallerUtils.downloadFromUrl(clientEntry.getValue().getAsString(), fullOutput.getPath());
 								break;
 							}
 						}

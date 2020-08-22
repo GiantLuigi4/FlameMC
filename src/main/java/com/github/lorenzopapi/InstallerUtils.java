@@ -91,24 +91,13 @@ public class InstallerUtils {
 		}
 	}
 
-	public void readJson(Path jsonPath) throws IOException {
-		JsonParser parser = new JsonParser();
-		JsonElement tree = parser.parse(Files.newBufferedReader(jsonPath));
-		JsonObject jsonObject = tree.getAsJsonObject();
-		for (Map.Entry<String, JsonElement> jsonEntry : jsonObject.entrySet()) {
-			JsonElement entryValue = jsonEntry.getValue();
-			String entryKey = jsonEntry.getKey();
-			/*if (entryValue.isJsonObject() && entryKey.equals("entryValue")) {
-				for (Map.Entry<String, JsonElement> downloadEntry : jsonObject.entrySet()) {
-
-				}
-				System.out.println(entryValue.toString());
-							for (Map.Entry<String, JsonElement> entryObject : entryValue.getAsJsonObject().entrySet()) {
-
-							}
-				//System.out.println(entryValue.toString());
-			}*/
+	public static JsonObject readJsonObject(JsonObject object, Function<String, Boolean> validator) {
+		for (Map.Entry<String, JsonElement> jsonEntry : object.entrySet()) {
+			if (validator.apply(jsonEntry.getKey())) {
+				return jsonEntry.getValue().getAsJsonObject();
+			}
 		}
+		return null;
 	}
 }
 
