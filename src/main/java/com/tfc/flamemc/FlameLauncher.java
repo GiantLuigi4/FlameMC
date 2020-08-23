@@ -159,7 +159,7 @@ public class FlameLauncher {
 				
 				@Override
 				public void windowClosed(WindowEvent e) {
-					exit(null,null,false,true,dir, finalVersion);
+//					exit(null,null,false,true,dir, finalVersion);
 				}
 				
 				@Override public void windowIconified(WindowEvent e) { }
@@ -275,91 +275,19 @@ public class FlameLauncher {
 			loader.loadClass(main_class).getMethod("main", String[].class).invoke(null, (Object) args);
 		} catch (Throwable err) {
 			FlameConfig.logError(err);
-			exit(err, frame, log, save_log, gameDir, version);
+			if (frame == null) {
+				exit(err, frame, log, save_log, gameDir, version);
+			} else {
+				frame.dispose();
+			}
+			throw new RuntimeException(err);
 		}
-
-//		field.append("Create Mod Loader\n");
-//		FlameLoader modLoader = new FlameLoader();
-//		field.append("Dir:" + dir + "\n");
-//		field.append("Set Mod Loader path\n");
-//		modLoader.setPath(dir + "\\flame_mods", true);
-//		field.append("Set mod loader path to: " + dir + "\\flame_mods\n");
-//		loader.addLoader(modLoader);
-//
-//		field.append("Discovering Flame Mods\n");
-//
-////		for (File f:new File(modLoader.getPath()).listFiles()) {
-////			FlameLoader loader1 = new FlameLoader();
-////			loader1.setPath(f.getPath());
-////			modLoader.addLoader(loader1);
-////		}
-//
-//		ArrayList<IFlameMod> mods = new ArrayList<>();
-//		try {
-//			for (File fi:Objects.requireNonNull(new File(dir + "\\flame_mods").listFiles())) {
-//				if (fi.exists() && (fi.getName().endsWith(".zip") || fi.getName().endsWith(".jar"))) {
-//					try {
-//						Class<?> c = null;
-//						if (fi.getName().endsWith(".jar")) {
-//							JarFile file = new JarFile(fi);
-//							Enumeration<JarEntry> entries = file.entries();
-//							while (entries.hasMoreElements()) {
-//								JarEntry entry = entries.nextElement();
-//								String name = entry.getName();
-//								if (name.startsWith("entries/"+fi.getName().replace(".jar","")+"/") && name.endsWith(".class")) {
-//									c = loader.load(entry.getName().replace(".class", "").replace("/","."),true);
-//									((IFlameMod)c.newInstance()).init(args);
-//								}
-//							}
-//						} else {
-//							ZipFile file = new ZipFile(fi);
-//							Enumeration<ZipEntry> entries = (Enumeration<ZipEntry>) file.entries();
-//							while (entries.hasMoreElements()) {
-//								ZipEntry entry = entries.nextElement();
-//								String name = entry.getName();
-//								if (name.startsWith("entries/"+fi.getName().replace(".zip","")+"/") && name.endsWith(".class")) {
-//									c = loader.load(entry.getName().replace(".class", "").replace("/","."),true);
-//									((IFlameMod)c.newInstance()).init(args);
-//								}
-//							}
-//						}
-//						if (c == null) {
-//							field.append("Main class for mod:" + fi.getName()+" does not appear to exist.\n");
-//						}
-//						for (Method m:c.getMethods()) {
-//							field.append(m.getName()+"\n");
-//						}
-//					} catch (Throwable err) {
-//						field.append("Something went wrong while initializing mod: "+fi.getName()+"\n");
-//						FlameConfig.logError(err);
-//						FlameConfig.logError(err.getCause());
-//					}
-//				}
-//			}
-//		} catch (Throwable ignored) {}
-//
-//		loader.blacklistName("h");
-//		loader.blacklistName("djy");
-//		loader.blacklistName("djy$a");
-//		loader.blacklistName("djy$b");
-//		loader.blacklistName("djy$c");
-//		loader.blacklistName("djy$d");
-//		loader.blacklistName("com.mojang.authlib.properties.PropertyMap");
-//		loader.blacklistName("dbz");
-//		loader.blacklistName("cxh");
-//		try {
-//			field.append("Game arguments: " + Arrays.toString(args) + "\n");
-//			Class<?> mainClass = Class.forName(main_class, false, loader);
-//			field.append("Got main class\n");
-//			Method main = mainClass.getMethod("main", String[].class);
-//			if (args != null) main.invoke(null, (Object) args);
-//			else throw new Exception("Game args are missing???");
-//		} catch (Throwable err) {
-//			FlameConfig.logError(err);
-//			if (err instanceof InvocationTargetException) FlameConfig.logError(err.getCause());
-//			exit(err, frame, log, save_log);
-//		}
-		exit(null, frame, log, save_log, gameDir, version);
+		
+		if (frame == null) {
+			exit(null, frame, log, save_log, gameDir, version);
+		} else {
+			frame.dispose();
+		}
 	}
 	
 	private static void exit(Throwable err, JFrame frame, boolean log, boolean save_log, String dir, String version) {
