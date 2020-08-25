@@ -138,11 +138,12 @@ public class FlameInstaller {
 				File flameTmpDir = new File(outputFlameDir + File.separator + "tmp");
 				File jsonOut = new File(outputFlameDir + File.separator + versionNumber + "-flame.json");
 				if (!outputFlameDir.exists()) outputFlameDir.mkdirs();
+				if (jsonOut.exists()) jsonOut.delete();
 
 				if ((!flameTmpDir.exists() || flameTmpDir.length() == 0)) {
 					if (downloadedFromUrl.get() || fullOutput.length() == 0) {
 						log.append("\nUnzipping flame...");
-						InstallerUtils.unzip(flameTmpDir.getPath(), flameInstaller.getPath(), name -> (name.startsWith("com/tfc/") && name.endsWith(".class") && !name.contains("FlameLoader")));
+						InstallerUtils.unzip(flameTmpDir.getPath(), flameInstaller.getPath(), name -> (name.startsWith("com/tfc/") && name.endsWith(".class")));
 						log.append("\nUnzipping finished");
 					}
 				}
