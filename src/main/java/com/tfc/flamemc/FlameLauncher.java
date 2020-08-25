@@ -179,7 +179,7 @@ public class FlameLauncher {
 		
 		try {
 			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLauncher"));
-			lockedClasses.add(Class.forName("com.tfc.flame.FlameLoader"));
+//			lockedClasses.add(Class.forName("com.tfc.flame.FlameLoader"));
 			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameTextArea"));
 			lockedClasses.add(Class.forName("com.tfc.flame.IFlameMod"));
 			lockedClasses.add(Class.forName("com.tfc.flame.FlameConfig"));

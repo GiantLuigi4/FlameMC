@@ -26,7 +26,6 @@ dependencies {
     // https://mvnrepository.com/artifact/org.apache.bcel/bcel
     compile group: 'org.apache.bcel', name: 'bcel', version: '6.0'
 
-
     //MC Dependencies
     runtimeOnly 'com.google.code.gson:gson:2.8.6'
     runtimeOnly 'com.mojang:authlib:1.6.25'
@@ -44,25 +43,8 @@ dependencies {
     runtimeOnly 'org.apache.commons:commons-lang3:3.5'
     runtimeOnly 'commons-io:commons-io:2.5'
     runtimeOnly 'commons-codec:commons-codec:1.10'
-    // https://mvnrepository.com/artifact/org.lwjgl/lwjgl-native-platform
-//    runtimeOnly group: 'org.lwjgl', name: 'lwjgl-native-platform', version: '2.7.1'
-//    runtimeOnly ''
     runtimeOnly 'ca.weblite:java-objc-bridge:1.0.0'
-//    runtimeOnly 'org.lwjgl:lwjgl:3.2.2'
-//    runtimeOnly 'org.lwjgl:lwjgl:3.2.1'
-//    runtimeOnly 'org.lwjgl:lwjgl-tinyfd:3.2.2'
-//    runtimeOnly 'org.lwjgl:lwjgl-tinyfd:3.2.1'
-//    runtimeOnly 'org.lwjgl:lwjgl-stb:3.2.2'
-//    runtimeOnly 'org.lwjgl:lwjgl-stb:3.2.1'
     runtimeOnly 'org.lwjgl:lwjgl-glfw:3.2.2'
-//    runtimeOnly 'org.lwjgl:lwjgl-glfw:3.2.1'
-//    runtimeOnly 'org.lwjgl:lwjgl-opengl:3.2.2'
-//    runtimeOnly 'org.lwjgl:lwjgl-opengl:3.2.1'
-//    runtimeOnly 'org.lwjgl:lwjgl-openal:3.2.2'
-//    runtimeOnly 'org.lwjgl:lwjgl-openal:3.2.1'
-//    runtimeOnly 'org.lwjgl:lwjgl-jemalloc:3.2.2'
-//    runtimeOnly 'org.lwjgl:lwjgl-jemalloc:3.2.1'
-//    runtimeOnly 'org.lwjgl:lwjgl:3.2.1'
     runtimeOnly 'it.unimi.dsi:fastutil:8.2.1'
     runtimeOnly 'org.apache.logging.log4j:log4j-core:2.8.1'
     runtimeOnly 'org.apache.logging.log4j:log4j-api:2.8.1'
@@ -94,6 +76,9 @@ dependencies {
     //https://mvnrepository.com/artifact/org.json/json
     extraLibs group: 'com.google.code.gson', name: 'gson', version: '2.2.4'
     extraLibs group: 'net.lingala.zip4j', name: 'zip4j', version: '2.6.1'
+
+    //Flame Mod Loader (main)
+    extraLibs 'com.github.GiantLuigi4:FlameLoader:ee03e26202'
     configurations.compile.extendsFrom(configurations.extraLibs)
 }
 
