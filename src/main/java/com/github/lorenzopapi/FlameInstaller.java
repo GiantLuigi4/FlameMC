@@ -102,17 +102,18 @@ public class FlameInstaller {
 						log.setForeground(Color.yellow);
 						log.append("\nWARN:No " + versionNumber + " json file found! The installer will try to download it from web.\nBe sure to have internet connection.");
 						MinecraftVersionMeta meta = gson.fromJson(versions, MinecraftVersionMeta.class);
+						boolean found = false;
 						for (MinecraftVersionMeta.Version version : meta.versions) {
 							if (version.id.equals(versionNumber)) {
 								jsonIn.getParentFile().mkdirs();
 								jsonIn.createNewFile();
 								InstallerUtils.downloadFromUrl(version.url, jsonIn.getPath());
-								downloadedFromUrl.set(true);
+						                found = true;
 								log.append("\nJson downloaded!");
 								break;
 							}
 						}
-						if (!downloadedFromUrl.get()) {
+						if (!found) {
 							log.setForeground(Color.red);
 							log.append("\nERROR:No " + versionNumber + " json found! VERSION NOT EXISTING!!!");
 							throw new IOException("Version not existing.");
@@ -130,6 +131,7 @@ public class FlameInstaller {
 						for (Map.Entry<String, JsonElement> clientEntry : Objects.requireNonNull(client).entrySet()) {
 							if (clientEntry.getKey().equals("url")) {
 								InstallerUtils.downloadFromUrl(clientEntry.getValue().getAsString(), fullOutput.getPath());
+                                                                downloadedFromUrl.set(true);
 								break;
 							}
 						}
@@ -138,11 +140,12 @@ public class FlameInstaller {
 				File flameTmpDir = new File(outputFlameDir + File.separator + "tmp");
 				File jsonOut = new File(outputFlameDir + File.separator + versionNumber + "-flame.json");
 				if (!outputFlameDir.exists()) outputFlameDir.mkdirs();
+				if (jsonOut.exists()) jsonOut.delete();
 
 				if ((!flameTmpDir.exists() || flameTmpDir.length() == 0)) {
 					if (downloadedFromUrl.get() || fullOutput.length() == 0) {
 						log.append("\nUnzipping flame...");
-						InstallerUtils.unzip(flameTmpDir.getPath(), flameInstaller.getPath(), name -> (name.startsWith("com/tfc/") && name.endsWith(".class") && !name.contains("FlameLoader")));
+						InstallerUtils.unzip(flameTmpDir.getPath(), flameInstaller.getPath(), name -> (name.startsWith("com/tfc/") && name.endsWith(".class")));
 						log.append("\nUnzipping finished");
 					}
 				}
@@ -168,7 +171,6 @@ public class FlameInstaller {
 					launchJson.libraries.add(new FlamedJson.Library(asmRepo + "-commons" + asmVer, mavenUrl));
 					launchJson.libraries.add(new FlamedJson.Library(asmRepo + "-tree" + asmVer, mavenUrl));
 					launchJson.libraries.add(new FlamedJson.Library(asmRepo + "-util" + asmVer, mavenUrl));
-					launchJson.libraries.add(new FlamedJson.Library("org.apache.bcel:bcel:6.0", mavenUrl));
 
 					try (Writer writer = Files.newBufferedWriter(jsonOut.toPath())) {
 						JsonElement tree = gson.toJsonTree(launchJson);
