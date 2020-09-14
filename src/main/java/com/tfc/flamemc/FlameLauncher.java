@@ -1,6 +1,8 @@
 package com.tfc.flamemc;
 
 import com.tfc.flame.*;
+import com.tfc.utils._flame.FlameLoader;
+import com.tfc.utils._flame.dependency_management.Manager;
 
 import javax.swing.*;
 import java.awt.event.WindowEvent;
@@ -23,6 +25,8 @@ public class FlameLauncher {
 	
 	//	public static final FlameLoader loader = new FlameLoader();
 	private static FlameURLLoader loader;
+	public static final FlameLoader loader1 = new FlameLoader(loader);
+	public static final Manager dependencyManager = new Manager(loader1);
 	
 	public static FlameURLLoader getLoader() {
 		return loader;
@@ -37,12 +41,13 @@ public class FlameLauncher {
 	protected static final ArrayList<String> additionalURLs = new ArrayList<>();
 	
 	public static void main(String[] args) {
+		FlameConfig.field = field;
+		field.append("Startup Flame\n");
+		field.append(Arrays.toString(args));
+		
 		if (isDev) {
 			dir = dir + "\\run";
 		}
-		field.append("Startup Flame\n");
-		field.append(Arrays.toString(args));
-		FlameConfig.field = field;
 		JFrame frame = null;
 		
 		String version = "1.15.2-flame";
@@ -309,5 +314,9 @@ public class FlameLauncher {
 	
 	public static void addClassReplacement(String clazz) {
 		loader.findReplacement(clazz);
+	}
+	
+	public static void downloadDep(String name, String url) {
+		dependencyManager.addFromURL("libs/"+name+","+url);
 	}
 }

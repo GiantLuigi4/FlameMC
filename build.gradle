@@ -44,7 +44,11 @@ dependencies {
     runtimeOnly 'commons-io:commons-io:2.5'
     runtimeOnly 'commons-codec:commons-codec:1.10'
     runtimeOnly 'ca.weblite:java-objc-bridge:1.0.0'
+    runtimeOnly 'org.lwjgl:lwjgl:3.2.2'
     runtimeOnly 'org.lwjgl:lwjgl-glfw:3.2.2'
+    runtimeOnly 'org.lwjgl:lwjgl-sse:3.2.2'
+    runtimeOnly 'org.lwjgl:lwjgl-zstd:3.2.2'
+    runtimeOnly 'org.lwjgl:lwjgl-platform:3.0.0:natives-windows'
     runtimeOnly 'it.unimi.dsi:fastutil:8.2.1'
     runtimeOnly 'org.apache.logging.log4j:log4j-core:2.8.1'
     runtimeOnly 'org.apache.logging.log4j:log4j-api:2.8.1'
@@ -78,7 +82,9 @@ dependencies {
     extraLibs group: 'net.lingala.zip4j', name: 'zip4j', version: '2.6.1'
 
     //Flame Mod Loader (main)
-    extraLibs 'com.github.GiantLuigi4:FlameLoader:ee03e26202'
+    extraLibs 'com.github.GiantLuigi4:FlameLoader:6a1e436deb'
+    //Creeper Utils (dependency management)
+    extraLibs 'com.github.GiantLuigi4:CreeperUtils:0e5ac9091b'
     configurations.compile.extendsFrom(configurations.extraLibs)
 }
 
