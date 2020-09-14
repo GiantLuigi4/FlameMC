@@ -25,8 +25,8 @@ public class FlameLauncher {
 	
 	//	public static final FlameLoader loader = new FlameLoader();
 	private static FlameURLLoader loader;
-	public static final FlameLoader loader1 = new FlameLoader(loader);
-	public static final Manager dependencyManager = new Manager(loader1);
+	public static FlameLoader loader1;
+	public static Manager dependencyManager;
 	
 	public static FlameURLLoader getLoader() {
 		return loader;
@@ -221,6 +221,8 @@ public class FlameLauncher {
 			}
 			
 			loader = new FlameURLLoader(urls);
+			loader1 = new FlameLoader(loader);
+			dependencyManager = new Manager(loader1);
 			field.append("Locking FlameMC classes\n");
 			lockedClasses.forEach(c -> {
 				field.append(c.getName() + '\n');
