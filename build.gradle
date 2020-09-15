@@ -24,7 +24,7 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     
     // https://mvnrepository.com/artifact/org.apache.bcel/bcel
-    compile group: 'org.apache.bcel', name: 'bcel', version: '6.0'
+    extraLibs group: 'org.apache.bcel', name: 'bcel', version: '6.0'
 
     //MC Dependencies
     runtimeOnly 'com.google.code.gson:gson:2.8.6'
