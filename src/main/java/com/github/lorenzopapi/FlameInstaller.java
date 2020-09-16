@@ -171,6 +171,7 @@ public class FlameInstaller {
 					launchJson.libraries.add(new FlamedJson.Library(asmRepo + "-commons" + asmVer, mavenUrl));
 					launchJson.libraries.add(new FlamedJson.Library(asmRepo + "-tree" + asmVer, mavenUrl));
 					launchJson.libraries.add(new FlamedJson.Library(asmRepo + "-util" + asmVer, mavenUrl));
+					launchJson.libraries.add(new FlamedJson.Library("org.apache.bcel:bcel:6.0", mavenUrl));
 
 					try (Writer writer = Files.newBufferedWriter(jsonOut.toPath())) {
 						JsonElement tree = gson.toJsonTree(launchJson);
