@@ -131,7 +131,7 @@ public class FlameInstaller {
 						for (Map.Entry<String, JsonElement> clientEntry : Objects.requireNonNull(client).entrySet()) {
 							if (clientEntry.getKey().equals("url")) {
 								InstallerUtils.downloadFromUrl(clientEntry.getValue().getAsString(), fullOutput.getPath());
-                                                                downloadedFromUrl.set(true);
+								downloadedFromUrl.set(true);
 								break;
 							}
 						}
