@@ -74,6 +74,7 @@ public class FlameInstaller {
 
 	public void install(JFrame mainFrame, TextArea log, AtomicBoolean clicked, JTextField setVersionPath, JButton installButton) {
 		while (mainFrame.isVisible()) {
+
 			while (installButton.isEnabled()) {
 				String versionPath = setVersionPath.getText();
 				String versionNumber = new File(versionPath).getName();
@@ -97,51 +98,54 @@ public class FlameInstaller {
 				File jsonIn = new File(versionPath + File.separator + versionNumber + ".json");
 				File outputFlameDir = new File(versionPath + "-flame");
 				File fullOutput = new File(outputFlameDir + File.separator + versionNumber + "-flame.jar");
-				if (!fullOutput.exists()) {
-					if (!jsonIn.exists()) {
-						log.setForeground(Color.yellow);
-						log.append("\nWARN:No " + versionNumber + " json file found! The installer will try to download it from web.\nBe sure to have internet connection.");
-						MinecraftVersionMeta meta = gson.fromJson(versions, MinecraftVersionMeta.class);
-						boolean found = false;
-						for (MinecraftVersionMeta.Version version : meta.versions) {
-							if (version.id.equals(versionNumber)) {
-								jsonIn.getParentFile().mkdirs();
-								jsonIn.createNewFile();
-								InstallerUtils.downloadFromUrl(version.url, jsonIn.getPath());
-						                found = true;
-								log.append("\nJson downloaded!");
-								break;
-							}
-						}
-						if (!found) {
-							log.setForeground(Color.red);
-							log.append("\nERROR:No " + versionNumber + " json found! VERSION NOT EXISTING!!!");
-							throw new IOException("Version not existing.");
+				if (!jsonIn.exists()) {
+					log.setForeground(Color.yellow);
+					log.append("\nWARN:No " + versionNumber + " json file found! The installer will try to download it from web.\nBe sure to have internet connection.");
+					MinecraftVersionMeta meta = gson.fromJson(versions, MinecraftVersionMeta.class);
+					boolean found = false;
+					for (MinecraftVersionMeta.Version version : meta.versions) {
+						if (version.id.equals(versionNumber)) {
+							jsonIn.getParentFile().mkdirs();
+							jsonIn.createNewFile();
+							InstallerUtils.downloadFromUrl(version.url, jsonIn.getPath());
+							found = true;
+							log.append("\nJson downloaded!");
+							log.setForeground(Color.black);
+							break;
 						}
 					}
-					if (!inputMinecraftJar.exists()) {
-						log.setForeground(Color.yellow);
-						if (!outputFlameDir.exists()) outputFlameDir.mkdirs();
-						log.append("\nWARN:No " + versionNumber + " version file found, but Json exists! The installer will try to download the jar from web.\nBe sure to have internet connection.");
-						JsonParser parser = new JsonParser();
-						JsonElement tree = parser.parse(Files.newBufferedReader(jsonIn.toPath()));
+					if (!found) {
+						log.setForeground(Color.red);
+						log.append("\nERROR:No " + versionNumber + " json found! VERSION NOT EXISTING!!!");
+						throw new IOException("Version not existing.");
+					}
+				}
+				if (!outputFlameDir.exists()) outputFlameDir.mkdirs();
+				if (!inputMinecraftJar.exists()) {
+					log.setForeground(Color.yellow);
+					log.append("\nWARN:No " + versionNumber + " version file found, but Json exists! The installer will try to download the jar from web.\nBe sure to have internet connection.");
+					JsonParser parser = new JsonParser();
+					JsonElement tree = parser.parse(Files.newBufferedReader(jsonIn.toPath()));
 
-						JsonObject downloads = InstallerUtils.readJsonObject(tree.getAsJsonObject(), s -> s.equals("downloads"));
-						JsonObject client = InstallerUtils.readJsonObject(Objects.requireNonNull(downloads).getAsJsonObject(), s -> s.equals("client"));
-						for (Map.Entry<String, JsonElement> clientEntry : Objects.requireNonNull(client).entrySet()) {
-							if (clientEntry.getKey().equals("url")) {
-								InstallerUtils.downloadFromUrl(clientEntry.getValue().getAsString(), fullOutput.getPath());
-								downloadedFromUrl.set(true);
-								break;
-							}
+					JsonObject downloads = InstallerUtils.readJsonObject(tree.getAsJsonObject(), s -> s.equals("downloads"));
+					JsonObject client = InstallerUtils.readJsonObject(Objects.requireNonNull(downloads).getAsJsonObject(), s -> s.equals("client"));
+					for (Map.Entry<String, JsonElement> clientEntry : Objects.requireNonNull(client).entrySet()) {
+						if (clientEntry.getKey().equals("url")) {
+							InstallerUtils.downloadFromUrl(clientEntry.getValue().getAsString(), fullOutput.getPath());
+							downloadedFromUrl.set(true);
+							break;
 						}
 					}
 				}
+
 				File flameTmpDir = new File(outputFlameDir + File.separator + "tmp");
 				File jsonOut = new File(outputFlameDir + File.separator + versionNumber + "-flame.json");
-				if (!outputFlameDir.exists()) outputFlameDir.mkdirs();
-				if (jsonOut.exists()) jsonOut.delete();
+				if (!downloadedFromUrl.get() && fullOutput.exists()) {
+					fullOutput.delete();
+					fullOutput.createNewFile();
+				}
 
+				log.setForeground(Color.black);
 				if ((!flameTmpDir.exists() || flameTmpDir.length() == 0)) {
 					if (downloadedFromUrl.get() || fullOutput.length() == 0) {
 						log.append("\nUnzipping flame...");
@@ -152,18 +156,20 @@ public class FlameInstaller {
 
 				ZipFile zipFile = new ZipFile(fullOutput);
 
+				if (!downloadedFromUrl.get()) {
+					log.append("\nCopying Minecraft jar...");
+					Files.copy(Files.newInputStream(inputMinecraftJar.toPath()), fullOutput.toPath(), StandardCopyOption.REPLACE_EXISTING);
+					log.append("\nMinecraft jar copied");
+				}
+
+				log.append("\nZipping FlameMC");
+				File f = new File(flameTmpDir + File.separator + "com");
+				if (!f.exists())
+					f.mkdirs();
+				zipFile.addFolder(f);
+				log.append("\nZipping finished");
+
 				if (!jsonOut.exists()) {
-					if (!downloadedFromUrl.get()) {
-						log.append("\nCopying Minecraft jar...");
-						Files.copy(Files.newInputStream(inputMinecraftJar.toPath()), fullOutput.toPath(), StandardCopyOption.REPLACE_EXISTING);
-						log.append("\nMinecraft jar copied");
-					}
-					log.append("\nZipping FlameMC");
-					File f = new File(flameTmpDir + File.separator + "com");
-					if (!f.exists())
-						f.mkdirs();
-					zipFile.addFolder(f);
-					log.append("\nZipping finished");
 					log.append("\nWriting Json");
 					FlamedJson launchJson = new FlamedJson(versionNumber + "-flame", versionNumber, "com.tfc.flamemc.FlameLauncher");
 					launchJson.arguments.game = new ArrayList<>();
@@ -183,7 +189,6 @@ public class FlameInstaller {
 					}
 					log.append("\nJson written");
 				} else {
-					log.append("\nVersion already existing");
 					log.append("\nJson already generated");
 				}
 
@@ -193,7 +198,7 @@ public class FlameInstaller {
 							.sorted(Comparator.reverseOrder())
 							.map(Path::toFile)
 							.forEach(File::delete);
-					log.append("\nTemps deleted");
+					log.append("\nFlameMC Temps deleted");
 				}
 				if (downloadedFromUrl.get() && jsonIn.getParentFile().exists()) {
 					log.append("\nDeleting download temps...");
@@ -201,7 +206,7 @@ public class FlameInstaller {
 							.sorted(Comparator.reverseOrder())
 							.map(Path::toFile)
 							.forEach(File::delete);
-					log.append("\nTemps deleted");
+					log.append("\nDownload Temps deleted");
 				}
 				long stop = System.nanoTime();
 				log.append("\nDone!\n");
@@ -212,6 +217,7 @@ public class FlameInstaller {
 				log.append("\nInstallation took " + timePass + " milliseconds.\n");
 				downloadedFromUrl.set(false);
 			} catch (Throwable err) {
+				log.append("\n" + err.getMessage());
 				for (StackTraceElement element : err.getStackTrace()) {
 					log.append("\n" + element);
 				}
