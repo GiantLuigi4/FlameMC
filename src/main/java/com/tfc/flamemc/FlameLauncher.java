@@ -1,17 +1,21 @@
 package com.tfc.flamemc;
 
-import com.tfc.flame.*;
-import com.tfc.utils._flame.FlameLoader;
-import com.tfc.utils._flame.dependency_management.Manager;
+import com.tfc.flame.FlameConfig;
+import com.tfc.flame.FlameLog;
+import com.tfc.flame.FlameURLLoader;
+import com.tfc.utils.flame.FlameLoader;
+import com.tfc.utils.flame.dependency_management.Manager;
 
 import javax.swing.*;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.FileWriter;
-import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.Scanner;
 
 public class FlameLauncher {
 	private static String dir = System.getProperty("user.dir");
