@@ -159,7 +159,10 @@ public class FlameInstaller {
 						log.append("\nMinecraft jar copied");
 					}
 					log.append("\nZipping FlameMC");
-					zipFile.addFolder(new File(flameTmpDir + File.separator + "com"));
+					File f = new File(flameTmpDir + File.separator + "com");
+					if (!f.exists())
+						f.mkdirs();
+					zipFile.addFolder(f);
 					log.append("\nZipping finished");
 					log.append("\nWriting Json");
 					FlamedJson launchJson = new FlamedJson(versionNumber + "-flame", versionNumber, "com.tfc.flamemc.FlameLauncher");
@@ -212,6 +215,7 @@ public class FlameInstaller {
 				for (StackTraceElement element : err.getStackTrace()) {
 					log.append("\n" + element);
 				}
+				log.setForeground(Color.red);
 				log.append("\nRestart installer");
 				throw new RuntimeException(err);
 			}

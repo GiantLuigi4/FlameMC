@@ -84,7 +84,7 @@ dependencies {
     //Flame Mod Loader (main)
     extraLibs 'com.github.GiantLuigi4:FlameLoader:6a1e436deb'
     //Creeper Utils (dependency management)
-    extraLibs 'com.github.GiantLuigi4:CreeperUtils:0e5ac9091b'
+    extraLibs 'com.github.GiantLuigi4:CreeperUtils:9283538f84'
     configurations.compile.extendsFrom(configurations.extraLibs)
 }
 
