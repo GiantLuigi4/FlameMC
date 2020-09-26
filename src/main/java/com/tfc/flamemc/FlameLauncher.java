@@ -1,5 +1,6 @@
 package com.tfc.flamemc;
 
+import com.github.lorenzopapi.InstallerUtils;
 import com.tfc.flame.FlameConfig;
 import com.tfc.flame.FlameLog;
 import com.tfc.flame.FlameURLLoader;
@@ -12,20 +13,18 @@ import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.FileWriter;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Scanner;
+import java.net.URLClassLoader;
+import java.util.*;
 
 public class FlameLauncher {
 	private static String dir = System.getProperty("user.dir");
-	private static boolean isDev =
+	public static boolean isDev =
 			new File(dir + "\\src").exists() &&
 					(new File(dir + "\\build").exists() ||
 							new File(dir + "\\build.gradle").exists()
 					);
 	
-	public static ArrayList<Class> lockedClasses = new ArrayList<>();
+	public static ArrayList<Class<?>> lockedClasses = new ArrayList<>();
 	
 	//	public static final FlameLoader loader = new FlameLoader();
 	private static FlameURLLoader loader;
@@ -47,8 +46,8 @@ public class FlameLauncher {
 	public static void main(String[] args) {
 		FlameConfig.field = field;
 		field.append("Startup Flame\n");
-		field.append(Arrays.toString(args));
-		
+		field.append(Arrays.toString(args) + "\n");
+		//--assetIndex, 1.15"
 		if (isDev) {
 			dir = dir + "\\run";
 		}
@@ -60,25 +59,33 @@ public class FlameLauncher {
 		boolean isVersion = false;
 		boolean isDir = false;
 		boolean isMain = false;
-		for (String s : args) {
-			if (s.equals("--version")) {
-				isVersion = true;
-			} else if (isVersion) {
-				version = s;
-				isVersion = false;
-			} else if (s.equals("--gameDir")) {
-				isDir = true;
-			} else if (isDir) {
-				gameDir = s;
-				isDir = false;
-			} else if (s.equals("--main_class")) {
-				isMain = true;
-			} else if (isMain) {
-				main_class = s;
-				isMain = false;
+		String[] defaultArgs;
+		if (args.length == 0) {
+			defaultArgs = new String[]{
+				"--username", "FLAMEDEV","--version", version, "--gameDir", dir, "--assetsDir", InstallerUtils.findMCDir(false) + File.separatorChar + "assets", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
+			};
+		} else {
+			for (String s : args) {
+				if (s.equals("--version")) {
+					isVersion = true;
+				} else if (isVersion) {
+					version = s;
+					isVersion = false;
+				} else if (s.equals("--gameDir")) {
+					isDir = true;
+				} else if (isDir) {
+					gameDir = s;
+					isDir = false;
+				} else if (s.equals("--main_class")) {
+					isMain = true;
+				} else if (isMain) {
+					main_class = s;
+					isMain = false;
+				}
 			}
+			defaultArgs = args;
 		}
-		
+
 		File flame_config = new File(gameDir + "\\flame_config\\flamemc.txt");
 		boolean log = false;
 		boolean save_log = true;
@@ -96,7 +103,7 @@ public class FlameLauncher {
 				FlameConfig.logError(err);
 			}
 		}
-		
+
 		try {
 			Scanner sc = new Scanner(flame_config);
 			while (sc.hasNextLine()) {
@@ -162,13 +169,11 @@ public class FlameLauncher {
 				@Override public void windowOpened(WindowEvent e) {}
 				
 				@Override
-				public void windowClosing(WindowEvent e) {
-					exit(null,null,false,true,dir, finalVersion);
-				}
+				public void windowClosing(WindowEvent e) {}
 				
 				@Override
 				public void windowClosed(WindowEvent e) {
-//					exit(null,null,false,true,dir, finalVersion);
+					exit(null,true, dir, finalVersion);
 				}
 				
 				@Override public void windowIconified(WindowEvent e) { }
@@ -177,10 +182,7 @@ public class FlameLauncher {
 				
 				@Override public void windowActivated(WindowEvent e) { }
 				
-				@Override
-				public void windowDeactivated(WindowEvent e) {
-					exit(null,null,false,true,dir, finalVersion);
-				}
+				@Override public void windowDeactivated(WindowEvent e) {}
 			});
 			frame.setSize(1000, 1000);
 			frame.setVisible(true);
@@ -227,6 +229,14 @@ public class FlameLauncher {
 			loader = new FlameURLLoader(urls);
 			loader1 = new FlameLoader(loader);
 			dependencyManager = new Manager(loader1);
+
+			if (isDev) {
+				downloadDep("lwjgl.jar", "https://repo1.maven.org/maven2/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-windows.jar");
+				downloadDep("glfw.jar", "https://github.com/glfw/glfw/releases/download/3.3.2/glfw-3.3.2.bin.WIN64.zip");
+				InstallerUtils.unzip(System.getProperty("user.dir") + "\\libs\\", System.getProperty("user.dir") + "\\libs\\lwjgl.jar", (fileName) -> fileName.endsWith(".dll"));
+				InstallerUtils.unzip(System.getProperty("user.dir") + "\\libs\\", System.getProperty("user.dir") + "\\libs\\glfw.jar", (fileName) -> fileName.endsWith(".dll"));
+			}
+
 			field.append("Locking FlameMC classes\n");
 			lockedClasses.forEach(c -> {
 				field.append(c.getName() + '\n');
@@ -253,7 +263,7 @@ public class FlameLauncher {
 			mods_list.forEach(mod -> {
 				try {
 					if (loader.load("com.tfc.flame.IFlameAPIMod", false).isInstance(mod)) {
-						mod.getClass().getMethod("setupAPI", String[].class).invoke(mod, (Object) args);
+						mod.getClass().getMethod("setupAPI", String[].class).invoke(mod, (Object) defaultArgs);
 					}
 				} catch (Throwable err) {
 					FlameConfig.logError(err);
@@ -261,21 +271,21 @@ public class FlameLauncher {
 			});
 			mods_list.forEach(mod -> {
 				try {
-					mod.getClass().getMethod("preinit", String[].class).invoke(mod, (Object) args);
+					mod.getClass().getMethod("preinit", String[].class).invoke(mod, (Object) defaultArgs);
 				} catch (Throwable err) {
 					FlameConfig.logError(err);
 				}
 			});
 			mods_list.forEach(mod -> {
 				try {
-					mod.getClass().getMethod("init", String[].class).invoke(mod, (Object) args);
+					mod.getClass().getMethod("init", String[].class).invoke(mod, (Object) defaultArgs);
 				} catch (Throwable err) {
 					FlameConfig.logError(err);
 				}
 			});
 			mods_list.forEach(mod -> {
 				try {
-					mod.getClass().getMethod("postinit", String[].class).invoke(mod, (Object) args);
+					mod.getClass().getMethod("postinit", String[].class).invoke(mod, (Object) defaultArgs);
 				} catch (Throwable err) {
 					FlameConfig.logError(err);
 				}
@@ -283,11 +293,19 @@ public class FlameLauncher {
 			if (version.contains("fabric")) {
 				System.setProperty("fabric.gameJarPath", dir + "\\versions\\" + version + "\\" + version + ".jar");
 			}
-			loader.loadClass(main_class).getMethod("main", String[].class).invoke(null, (Object) args);
+			if (isDev) {
+				String versionPath = dir + "\\versions\\" + File.separatorChar + version + File.separatorChar + version + ".jar";
+				URL versionURL = new File(versionPath).toURI().toURL();
+				URLClassLoader child = new URLClassLoader (new URL[]{ versionURL }, FlameLauncher.class.getClassLoader());
+				Class.forName(main_class, true, child).getMethod("main", String[].class).invoke(null, (Object) defaultArgs);
+				//System.setProperty("java.class.path", System.getProperty("java.class.path") + ";" + versionUrl);
+			} else {
+				loader.loadClass(main_class).getMethod("main", String[].class).invoke(null, (Object) args);
+			}
 		} catch (Throwable err) {
 			FlameConfig.logError(err);
 			if (frame == null) {
-				exit(err, frame, log, save_log, gameDir, version);
+				exit(err, save_log, gameDir, version);
 			} else {
 				frame.dispose();
 			}
@@ -295,13 +313,13 @@ public class FlameLauncher {
 		}
 		
 		if (frame == null) {
-			exit(null, frame, log, save_log, gameDir, version);
+			exit(null, save_log, gameDir, version);
 		} else {
 			frame.dispose();
 		}
 	}
 	
-	private static void exit(Throwable err, JFrame frame, boolean log, boolean save_log, String dir, String version) {
+	private static void exit(Throwable err, boolean save_log, String dir, String version) {
 		if (save_log) {
 			try {
 				File fi = new File(dir + "\\flame_logs\\" + version);
@@ -314,7 +332,6 @@ public class FlameLauncher {
 			} catch (Throwable ignored) {
 			}
 		}
-		if (log) frame.dispose();
 		if (err != null) throw new RuntimeException(err);
 	}
 	

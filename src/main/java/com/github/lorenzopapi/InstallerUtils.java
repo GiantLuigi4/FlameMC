@@ -3,6 +3,7 @@ package com.github.lorenzopapi;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.tfc.flamemc.FlameLauncher;
 
 import java.io.*;
 import java.net.URL;
@@ -46,19 +47,29 @@ public class InstallerUtils {
 		}
 	}
 
-	public static File findVersionsDir() {
+	public static String findMCDir(boolean isDev) {
 		String home = System.getProperty("user.home", ".");
 		String os = System.getProperty("os.name").toLowerCase();
-		File dir;
-		File homeDir = new File(home);
-
-		if (os.contains("win") && System.getenv("APPDATA") != null) {
-			dir = new File(System.getenv("APPDATA"), ".minecraft" + File.separator + "versions");
-		} else if (os.contains("mac")) {
-			dir = new File(homeDir, "Library" + File.separator + "Application Support" + File.separator + "minecraft" + File.separator + "versions");
+		String dir;
+		if (!isDev) {
+			if (os.contains("win") && System.getenv("APPDATA") != null) {
+				dir = System.getenv("APPDATA") + ".minecraft";
+			} else if (os.contains("mac")) {
+				dir = home + "Library" + File.separator + "Application Support" + File.separator + "minecraft";
+			} else {
+				dir = home + ".minecraft";
+			}
 		} else {
-			dir = new File(homeDir, ".minecraft" + File.separator + "versions");
+			dir = FlameLauncher.getDir();
 		}
+		return dir;
+	}
+
+	public static File findVersionsDir() {
+		File dir;
+		dir = new File(findMCDir(FlameLauncher.isDev) + File.separator + "versions");
+		if (!dir.exists())
+			dir.mkdirs();
 		return dir;
 	}
 
