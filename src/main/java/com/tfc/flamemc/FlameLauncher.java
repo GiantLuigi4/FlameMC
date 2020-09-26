@@ -1,6 +1,7 @@
 package com.tfc.flamemc;
 
 import com.github.lorenzopapi.InstallerUtils;
+import com.tfc.flame.FlameClassLoader;
 import com.tfc.flame.FlameConfig;
 import com.tfc.flame.FlameLog;
 import com.tfc.flame.FlameURLLoader;
@@ -12,8 +13,12 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class FlameLauncher {
@@ -228,13 +233,25 @@ public class FlameLauncher {
 			
 			loader = new FlameURLLoader(urls);
 			loader1 = new FlameLoader(loader);
-			dependencyManager = new Manager(loader1);
+			dependencyManager = new Manager(loader);
 
 			if (isDev) {
-				downloadDep("lwjgl.jar", "https://repo1.maven.org/maven2/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-windows.jar");
-				downloadDep("glfw.jar", "https://github.com/glfw/glfw/releases/download/3.3.2/glfw-3.3.2.bin.WIN64.zip");
-				InstallerUtils.unzip(System.getProperty("user.dir") + "\\libs\\", System.getProperty("user.dir") + "\\libs\\lwjgl.jar", (fileName) -> fileName.endsWith(".dll"));
-				InstallerUtils.unzip(System.getProperty("user.dir") + "\\libs\\", System.getProperty("user.dir") + "\\libs\\glfw.jar", (fileName) -> fileName.endsWith(".dll"));
+				HashMap<String, Boolean> depMap = new HashMap<>();
+				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-windows.jar", true);
+				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.2.2/lwjgl-glfw-3.2.2-natives-windows.jar", true);
+				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-opengl/3.2.2/lwjgl-opengl-3.2.2-natives-windows.jar", true);
+				depMap.put("https://libraries.minecraft.net/com/mojang/brigadier/1.0.17/brigadier-1.0.17.jar", false);
+				depMap.put("https://libraries.minecraft.net/com/mojang/datafixerupper/2.0.24/datafixerupper-2.0.24.jar", false);
+				depMap.forEach((dep, unzip) -> {
+					String fileName = dep.substring(dep.lastIndexOf("/") + 1);
+					downloadDepWithoutSpecifingFileNameBecauseIAmLazy(dep);
+					if (unzip) {
+						InstallerUtils.unzip(System.getProperty("user.dir") + "\\libs\\", System.getProperty("user.dir") + "\\libs\\" + fileName, (n) -> n.endsWith(".dll"));
+						try {
+							Files.delete(Paths.get(System.getProperty("user.dir") + "\\libs\\" + fileName));
+						} catch (Throwable ignored) {}
+					}
+				});
 			}
 
 			field.append("Locking FlameMC classes\n");
@@ -293,15 +310,7 @@ public class FlameLauncher {
 			if (version.contains("fabric")) {
 				System.setProperty("fabric.gameJarPath", dir + "\\versions\\" + version + "\\" + version + ".jar");
 			}
-			if (isDev) {
-				String versionPath = dir + "\\versions\\" + File.separatorChar + version + File.separatorChar + version + ".jar";
-				URL versionURL = new File(versionPath).toURI().toURL();
-				URLClassLoader child = new URLClassLoader (new URL[]{ versionURL }, FlameLauncher.class.getClassLoader());
-				Class.forName(main_class, true, child).getMethod("main", String[].class).invoke(null, (Object) defaultArgs);
-				//System.setProperty("java.class.path", System.getProperty("java.class.path") + ";" + versionUrl);
-			} else {
-				loader.loadClass(main_class).getMethod("main", String[].class).invoke(null, (Object) args);
-			}
+			loader.loadClass(main_class).getMethod("main", String[].class).invoke(null, (Object) defaultArgs);
 		} catch (Throwable err) {
 			FlameConfig.logError(err);
 			if (frame == null) {
@@ -338,8 +347,17 @@ public class FlameLauncher {
 	public static void addClassReplacement(String clazz) {
 		loader.findReplacement(clazz);
 	}
-	
+
+	public static void downloadDepWithoutSpecifingFileNameBecauseIAmLazy(String url) {
+		String name = url.substring(url.lastIndexOf("/") + 1);
+		try {
+			dependencyManager.addFromURL("libs\\" + name + "," + url);
+		} catch (Throwable err) {
+			FlameLauncher.downloadDep(name, url);
+		}
+	}
+
 	public static void downloadDep(String name, String url) {
-		dependencyManager.addFromURL("libs/"+name+","+url);
+		dependencyManager.addFromURL("libs\\"+name+","+url);
 	}
 }

@@ -60,7 +60,7 @@ public class InstallerUtils {
 				dir = home + ".minecraft";
 			}
 		} else {
-			dir = FlameLauncher.getDir();
+			dir = FlameLauncher.getDir()+ "\\run";
 		}
 		return dir;
 	}
