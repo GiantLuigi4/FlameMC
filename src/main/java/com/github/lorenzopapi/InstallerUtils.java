@@ -53,7 +53,7 @@ public class InstallerUtils {
 		String dir;
 		if (!isDev) {
 			if (os.contains("win") && System.getenv("APPDATA") != null) {
-				dir = System.getenv("APPDATA") + ".minecraft";
+				dir = System.getenv("APPDATA") + File.separator + ".minecraft";
 			} else if (os.contains("mac")) {
 				dir = home + "Library" + File.separator + "Application Support" + File.separator + "minecraft";
 			} else {
@@ -74,6 +74,11 @@ public class InstallerUtils {
 	}
 
 	public static void downloadFromUrl(String url, String downloadFile) throws IOException {
+		File testFile = new File(downloadFile);
+		if (!testFile.exists()) {
+			testFile.getParentFile().mkdirs();
+			testFile.createNewFile();
+		}
 		try (BufferedInputStream inputStream = new BufferedInputStream(new URL(url).openStream());
 			FileOutputStream fileOS = new FileOutputStream(downloadFile)) {
 			byte[] data = new byte[1024];

@@ -52,45 +52,50 @@ public class FlameLauncher {
 		FlameConfig.field = field;
 		field.append("Startup Flame\n");
 		field.append(Arrays.toString(args) + "\n");
-		//--assetIndex, 1.15"
 		if (isDev) {
 			dir = dir + "\\run";
 		}
 		JFrame frame = null;
-		
+
 		String version = "1.15.2-flame";
 		String gameDir = dir;
 		String main_class = null;
 		boolean isVersion = false;
 		boolean isDir = false;
 		boolean isMain = false;
-		String[] defaultArgs;
+		String[] defaultArgs = new String[]{};
+		String[] immutableArgs = new String[]{
+				"--username", "FlameDev", "--assetsDir", InstallerUtils.findMCDir(false) + "\\assets\\", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
+		};
 		if (args.length == 0) {
 			defaultArgs = new String[]{
-				"--username", "FLAMEDEV","--version", version, "--gameDir", dir, "--assetsDir", InstallerUtils.findMCDir(false) + File.separatorChar + "assets", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
+					"--username", "FlameDev", "--version", version, "--gameDir", gameDir, "--assetsDir", InstallerUtils.findMCDir(false) + "\\assets\\", "--assetIndex", version.substring(0, version.lastIndexOf(".")), "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
 			};
-		} else {
-			for (String s : args) {
-				if (s.equals("--version")) {
-					isVersion = true;
-				} else if (isVersion) {
-					version = s;
-					isVersion = false;
-				} else if (s.equals("--gameDir")) {
-					isDir = true;
-				} else if (isDir) {
-					gameDir = s;
-					isDir = false;
-				} else if (s.equals("--main_class")) {
-					isMain = true;
-				} else if (isMain) {
-					main_class = s;
-					isMain = false;
-				}
+		} else if (isDev) {
+			defaultArgs = new String[immutableArgs.length + args.length];
+			System.arraycopy(immutableArgs, 0, defaultArgs, 0, immutableArgs.length);
+			System.arraycopy(args, 0, defaultArgs, immutableArgs.length, args.length);
+		}
+		for (String s : args) {
+			if (s.equals("--version")) {
+				isVersion = true;
+			} else if (isVersion) {
+				version = s;
+				isVersion = false;
+			} else if (s.equals("--gameDir")) {
+				isDir = true;
+			} else if (isDir) {
+				gameDir = s;
+				isDir = false;
+			} else if (s.equals("--main_class")) {
+				isMain = true;
+			} else if (isMain) {
+				main_class = s;
+				isMain = false;
 			}
-			defaultArgs = args;
 		}
 
+		System.out.println(Arrays.toString(defaultArgs));
 		File flame_config = new File(gameDir + "\\flame_config\\flamemc.txt");
 		boolean log = false;
 		boolean save_log = true;
@@ -240,14 +245,16 @@ public class FlameLauncher {
 				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-windows.jar", true);
 				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.2.2/lwjgl-glfw-3.2.2-natives-windows.jar", true);
 				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-opengl/3.2.2/lwjgl-opengl-3.2.2-natives-windows.jar", true);
+				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-stb/3.2.2/lwjgl-stb-3.2.2-natives-windows.jar", true);
+				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-openal/3.2.2/lwjgl-openal-3.2.2-natives-windows.jar", true);
 				depMap.put("https://libraries.minecraft.net/com/mojang/brigadier/1.0.17/brigadier-1.0.17.jar", false);
 				depMap.put("https://libraries.minecraft.net/com/mojang/datafixerupper/2.0.24/datafixerupper-2.0.24.jar", false);
 				depMap.forEach((dep, unzip) -> {
 					String fileName = dep.substring(dep.lastIndexOf("/") + 1);
 					downloadDepWithoutSpecifingFileNameBecauseIAmLazy(dep);
 					if (unzip) {
-						InstallerUtils.unzip(System.getProperty("user.dir") + "\\libs\\", System.getProperty("user.dir") + "\\libs\\" + fileName, (n) -> n.endsWith(".dll"));
 						try {
+							InstallerUtils.unzip(System.getProperty("user.dir") + "\\libs\\", System.getProperty("user.dir") + "\\libs\\" + fileName, (n) -> n.endsWith(".dll"));
 							Files.delete(Paths.get(System.getProperty("user.dir") + "\\libs\\" + fileName));
 						} catch (Throwable ignored) {}
 					}
@@ -277,10 +284,11 @@ public class FlameLauncher {
 			} catch (Throwable err) {
 				FlameConfig.logError(err);
 			}
+			String[] finalDefaultArgs = defaultArgs;
 			mods_list.forEach(mod -> {
 				try {
 					if (loader.load("com.tfc.flame.IFlameAPIMod", false).isInstance(mod)) {
-						mod.getClass().getMethod("setupAPI", String[].class).invoke(mod, (Object) defaultArgs);
+						mod.getClass().getMethod("setupAPI", String[].class).invoke(mod, (Object) finalDefaultArgs);
 					}
 				} catch (Throwable err) {
 					FlameConfig.logError(err);
@@ -288,21 +296,21 @@ public class FlameLauncher {
 			});
 			mods_list.forEach(mod -> {
 				try {
-					mod.getClass().getMethod("preinit", String[].class).invoke(mod, (Object) defaultArgs);
+					mod.getClass().getMethod("preinit", String[].class).invoke(mod, (Object) finalDefaultArgs);
 				} catch (Throwable err) {
 					FlameConfig.logError(err);
 				}
 			});
 			mods_list.forEach(mod -> {
 				try {
-					mod.getClass().getMethod("init", String[].class).invoke(mod, (Object) defaultArgs);
+					mod.getClass().getMethod("init", String[].class).invoke(mod, (Object) finalDefaultArgs);
 				} catch (Throwable err) {
 					FlameConfig.logError(err);
 				}
 			});
 			mods_list.forEach(mod -> {
 				try {
-					mod.getClass().getMethod("postinit", String[].class).invoke(mod, (Object) defaultArgs);
+					mod.getClass().getMethod("postinit", String[].class).invoke(mod, (Object) finalDefaultArgs);
 				} catch (Throwable err) {
 					FlameConfig.logError(err);
 				}
