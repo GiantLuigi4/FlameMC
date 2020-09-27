@@ -1,7 +1,6 @@
 package com.tfc.flamemc;
 
 import com.github.lorenzopapi.InstallerUtils;
-import com.tfc.flame.FlameClassLoader;
 import com.tfc.flame.FlameConfig;
 import com.tfc.flame.FlameLog;
 import com.tfc.flame.FlameURLLoader;
@@ -13,10 +12,7 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -31,7 +27,6 @@ public class FlameLauncher {
 	
 	public static ArrayList<Class<?>> lockedClasses = new ArrayList<>();
 	
-	//	public static final FlameLoader loader = new FlameLoader();
 	private static FlameURLLoader loader;
 	public static FlameLoader loader1;
 	public static Manager dependencyManager;
@@ -65,11 +60,11 @@ public class FlameLauncher {
 		boolean isMain = false;
 		String[] defaultArgs = new String[]{};
 		String[] immutableArgs = new String[]{
-				"--username", "FlameDev", "--assetsDir", InstallerUtils.findMCDir(false) + "\\assets\\", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
+			"--username", "FlameDev", "--assetsDir", InstallerUtils.findMCDir(false) + "\\assets\\", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
 		};
 		if (args.length == 0) {
 			defaultArgs = new String[]{
-					"--username", "FlameDev", "--version", version, "--gameDir", gameDir, "--assetsDir", InstallerUtils.findMCDir(false) + "\\assets\\", "--assetIndex", version.substring(0, version.lastIndexOf(".")), "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
+				"--username", "FlameDev", "--version", version, "--gameDir", gameDir, "--assetsDir", InstallerUtils.findMCDir(false) + "\\assets\\", "--assetIndex", version.substring(0, version.lastIndexOf(".")), "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
 			};
 		} else if (isDev) {
 			defaultArgs = new String[immutableArgs.length + args.length];
@@ -95,7 +90,6 @@ public class FlameLauncher {
 			}
 		}
 
-		System.out.println(Arrays.toString(defaultArgs));
 		File flame_config = new File(gameDir + "\\flame_config\\flamemc.txt");
 		boolean log = false;
 		boolean save_log = true;
@@ -141,7 +135,7 @@ public class FlameLauncher {
 					version_config.getParentFile().mkdirs();
 					version_config.createNewFile();
 					FileWriter writer = new FileWriter(version_config);
-					writer.write("main_class:" + "net.minecraft.client.main.Main");
+					writer.write("main_class:net.minecraft.client.main.Main");
 					writer.close();
 				} catch (Throwable err) {
 					FlameConfig.logError(err);
@@ -200,7 +194,6 @@ public class FlameLauncher {
 		
 		try {
 			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLauncher"));
-//			lockedClasses.add(Class.forName("com.tfc.flame.FlameLoader"));
 			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameTextArea"));
 			lockedClasses.add(Class.forName("com.tfc.flame.IFlameMod"));
 			lockedClasses.add(Class.forName("com.tfc.flame.FlameConfig"));
@@ -208,13 +201,7 @@ public class FlameLauncher {
 			lockedClasses.add(Class.forName("com.tfc.flame.IFlameAPIMod"));
 		} catch (Throwable ignored) {
 		}
-//		field.append("Locking FlameMC classes\n");
-//		lockedClasses.forEach(c -> {
-//			field.append(c.getName() + '\n');
-//			loader.append(c.getName(), c);
-//		});
-//		field.append("Locked FlameMC classes\n");
-		
+
 		try {
 			ArrayList<String> mods = new ArrayList<>();
 			File fi = new File(gameDir + "\\flame_mods");
@@ -251,7 +238,7 @@ public class FlameLauncher {
 				depMap.put("https://libraries.minecraft.net/com/mojang/datafixerupper/2.0.24/datafixerupper-2.0.24.jar", false);
 				depMap.forEach((dep, unzip) -> {
 					String fileName = dep.substring(dep.lastIndexOf("/") + 1);
-					downloadDepWithoutSpecifingFileNameBecauseIAmLazy(dep);
+					downloadDepJustURL(dep);
 					if (unzip) {
 						try {
 							InstallerUtils.unzip(System.getProperty("user.dir") + "\\libs\\", System.getProperty("user.dir") + "\\libs\\" + fileName, (n) -> n.endsWith(".dll"));
@@ -351,12 +338,13 @@ public class FlameLauncher {
 		}
 		if (err != null) throw new RuntimeException(err);
 	}
-	
+
+	//Do we still need this?
 	public static void addClassReplacement(String clazz) {
 		loader.findReplacement(clazz);
 	}
 
-	public static void downloadDepWithoutSpecifingFileNameBecauseIAmLazy(String url) {
+	public static void downloadDepJustURL(String url) {
 		String name = url.substring(url.lastIndexOf("/") + 1);
 		try {
 			dependencyManager.addFromURL("libs\\" + name + "," + url);
@@ -366,6 +354,6 @@ public class FlameLauncher {
 	}
 
 	public static void downloadDep(String name, String url) {
-		dependencyManager.addFromURL("libs\\"+name+","+url);
+		dependencyManager.addFromURL("libs\\" + name + "," + url);
 	}
 }
