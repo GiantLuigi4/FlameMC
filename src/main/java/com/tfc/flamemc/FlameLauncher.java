@@ -355,7 +355,7 @@ public class FlameLauncher {
 	public static void downloadDepJustURL(String url) {
 		String name = url.substring(url.lastIndexOf("/") + 1);
 		try {
-			dependencyManager.addFromURL("libs\\" + name + "," + url);
+			dependencyManager.addFromURL("libraries\\" + name + "," + url);
 		} catch (Throwable err) {
 			FlameLauncher.downloadDep(name, url);
 		}
