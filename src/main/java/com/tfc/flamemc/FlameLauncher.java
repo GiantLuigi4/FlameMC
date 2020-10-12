@@ -1,6 +1,5 @@
 package com.tfc.flamemc;
 
-import com.github.lorenzopapi.InstallerUtils;
 import com.tfc.flame.FlameConfig;
 import com.tfc.flame.FlameLog;
 import com.tfc.flame.FlameURLLoader;
@@ -12,10 +11,17 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.function.Function;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 public class FlameLauncher {
 	private static String dir = System.getProperty("user.dir");
@@ -47,6 +53,8 @@ public class FlameLauncher {
 		FlameConfig.field = field;
 		field.append("Startup Flame\n");
 		field.append(Arrays.toString(args) + "\n");
+		isDev = false;
+		//TODO remember this ^
 		if (isDev) {
 			dir = dir + "\\run";
 		}
@@ -60,11 +68,11 @@ public class FlameLauncher {
 		boolean isMain = false;
 		String[] defaultArgs = new String[]{};
 		String[] immutableArgs = new String[]{
-			"--username", "FlameDev", "--assetsDir", InstallerUtils.findMCDir(false) + "\\assets\\", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
+			"--username", "FlameDev", "--assetsDir", findMCDir(false) + "\\assets\\", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
 		};
 		if (args.length == 0) {
 			defaultArgs = new String[]{
-				"--username", "FlameDev", "--version", version, "--gameDir", gameDir, "--assetsDir", InstallerUtils.findMCDir(false) + "\\assets\\", "--assetIndex", version.substring(0, version.lastIndexOf(".")), "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
+				"--username", "FlameDev", "--version", version, "--gameDir", gameDir, "--assetsDir", findMCDir(false) + "\\assets\\", "--assetIndex", version.substring(0, version.lastIndexOf(".")), "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
 			};
 		} else if (isDev) {
 			defaultArgs = new String[immutableArgs.length + args.length];
@@ -241,7 +249,7 @@ public class FlameLauncher {
 					downloadDepJustURL(dep);
 					if (unzip) {
 						try {
-							InstallerUtils.unzip(System.getProperty("user.dir") + "\\libs\\", System.getProperty("user.dir") + "\\libs\\" + fileName, (n) -> n.endsWith(".dll"));
+							unzip(System.getProperty("user.dir") + "\\libs\\", System.getProperty("user.dir") + "\\libs\\" + fileName, (n) -> n.endsWith(".dll"));
 							Files.delete(Paths.get(System.getProperty("user.dir") + "\\libs\\" + fileName));
 						} catch (Throwable ignored) {}
 					}
@@ -350,6 +358,53 @@ public class FlameLauncher {
 			dependencyManager.addFromURL("libs\\" + name + "," + url);
 		} catch (Throwable err) {
 			FlameLauncher.downloadDep(name, url);
+		}
+	}
+
+	public static String findMCDir(boolean isDev) {
+		String home = System.getProperty("user.home", ".");
+		String os = System.getProperty("os.name").toLowerCase();
+		String dir;
+		if (!isDev) {
+			if (os.contains("win") && System.getenv("APPDATA") != null) {
+				dir = System.getenv("APPDATA") + File.separator + ".minecraft";
+			} else if (os.contains("mac")) {
+				dir = home + "Library" + File.separator + "Application Support" + File.separator + "minecraft";
+			} else {
+				dir = home + ".minecraft";
+			}
+		} else {
+			dir = FlameLauncher.getDir()+ "\\run";
+		}
+		return dir;
+	}
+
+	public static void unzip(String targetDir, String zipFilename, Function<String, Boolean> fileV) {
+		Path targetDirPath = Paths.get(targetDir);
+		try (ZipFile zipFile = new ZipFile(zipFilename)) {
+			zipFile.stream()
+					.parallel() // enable multi-threading
+					.forEach(e -> unzipEntry(zipFile, e, targetDirPath, fileV));
+		} catch (IOException e) {
+			throw new RuntimeException("Error opening zip file '" + zipFilename + "': " + e, e);
+		}
+	}
+
+	private static void unzipEntry(ZipFile zipFile, ZipEntry entry, Path targetDir, Function<String, Boolean> fileV) {
+		try {
+			Path targetPath = targetDir.resolve(Paths.get(entry.getName()));
+			if (fileV.apply(entry.getName())) {
+				if (Files.isDirectory(targetPath)) {
+					Files.createDirectories(targetPath);
+				} else {
+					Files.createDirectories(targetPath.getParent());
+					try (InputStream in = zipFile.getInputStream(entry)) {
+						Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
+					}
+				}
+			}
+		} catch (IOException e) {
+			throw new RuntimeException("Error processing zip entry '" + entry.getName() + "': " + e, e);
 		}
 	}
 

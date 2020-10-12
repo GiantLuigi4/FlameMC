@@ -2,7 +2,6 @@ package com.github.lorenzopapi;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.tfc.flamemc.FlameLauncher;
 
 import java.io.*;
