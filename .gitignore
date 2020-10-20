@@ -16,3 +16,5 @@
 FlameInstaller.jar
 libraries/*
 server/tmp/*
+logs/*
+server/flame_*/*

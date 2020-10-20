@@ -25,14 +25,13 @@ import java.util.zip.ZipFile;
 
 public class FlameLauncher {
 	private static String dir = System.getProperty("user.dir");
-	public static boolean isClientDev =
+	public static boolean isDev =
 			new File(dir + "\\src").exists() &&
 					(new File(dir + "\\build").exists() ||
 							new File(dir + "\\build.gradle").exists()
 					);
 
 	public static boolean isServer = false;
-	public static boolean isServerDevMode = new File(dir + "\\server").exists();
 
 	public static ArrayList<Class<?>> lockedClasses = new ArrayList<>();
 	
@@ -57,9 +56,18 @@ public class FlameLauncher {
 		field.append("Startup Flame\n");
 		field.append(Arrays.toString(args) + "\n");
 
-		if (isClientDev) {
+		if (isDev) {
 			dir = dir + "\\run";
 		}
+
+		for (String s : args) {
+			if (s.equals("--serverDev")) {
+				isServer = true;
+				dir = System.getProperty("user.dir") + "\\server\\";
+				break;
+			}
+		}
+
 		JFrame frame = null;
 
 		String version = "1.15.2-flame";
@@ -72,24 +80,17 @@ public class FlameLauncher {
 		String[] immutableArgs = new String[]{
 			"--username", "FlameDev", "--assetsDir", findMCDir(false) + "\\assets\\", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
 		};
-		for (String s : args) {
-			if (s.equals("--serverDev")) {
-				isClientDev = false;
-				isServerDevMode = true;
-				isServer = true;
-				dir = dir + "\\server";
-				break;
-			}
-		}
+
 		if (args.length == 0) {
 			defaultArgs = new String[]{
 				"--username", "FlameDev", "--version", version, "--gameDir", gameDir, "--assetsDir", findMCDir(false) + "\\assets\\", "--assetIndex", version.substring(0, version.lastIndexOf(".")), "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
 			};
-		} else if (isClientDev) {
+		} else if (isDev) {
 			defaultArgs = new String[immutableArgs.length + args.length];
 			System.arraycopy(immutableArgs, 0, defaultArgs, 0, immutableArgs.length);
 			System.arraycopy(args, 0, defaultArgs, immutableArgs.length, args.length);
 		}
+
 		for (String s : args) {
 			if (s.equals("--version")) {
 				isVersion = true;
@@ -109,6 +110,10 @@ public class FlameLauncher {
 				main_class = s;
 				isMain = false;
 			}
+		}
+
+		if (isServer) {
+			defaultArgs = removeInvalidArgs(args);
 		}
 
 		File flame_config = new File(gameDir + "\\flame_config\\flamemc.txt");
@@ -178,14 +183,6 @@ public class FlameLauncher {
 			}
 		}
 
-//		field.append("Set Version Loader Path\n");
-//		try {
-//			loader.setPath(dir + "\\versions\\1.15.2-flame\\1.15.2-flame.jar");
-//			loader.setParent(FlameLauncher.class.getClassLoader());
-//		} catch (Throwable err) {
-//			FlameConfig.logError(err);
-//		}
-		
 		if (log) {
 			frame = new JFrame("Flame MC log: " + version);
 			frame.add(field);
@@ -231,7 +228,11 @@ public class FlameLauncher {
 			for (File fi1 : Objects.requireNonNull(fi.listFiles())) mods.add(fi1.getPath());
 			
 			URL[] urls = new URL[mods.size() + 1 + additionalURLs.size()];
-			urls[0] = new File(dir + "\\versions\\" + version + "\\" + version + ".jar").toURL();
+
+			if (!isServer) {
+				urls[0] = new File(dir + "\\versions\\" + version + "\\" + version + ".jar").toURL();
+			}
+
 			for (int i = 0; i < mods.size(); i++) {
 				String s = mods.get(i);
 				File fi1 = new File(s);
@@ -249,13 +250,8 @@ public class FlameLauncher {
 			dependencyManager = new Manager(loader);
 
 			if (isServer) {
-				List<String> depMap = new ArrayList<>();
-				depMap.add("https://libraries.minecraft.net/com/mojang/brigadier/1.0.17/brigadier-1.0.17.jar");
-				depMap.add("https://libraries.minecraft.net/com/mojang/datafixerupper/2.0.24/datafixerupper-2.0.24.jar");
-				depMap.forEach(FlameLauncher::downloadDepJustURL);
-			}
-
-			if (isClientDev) {
+				loader.addURL(new URL("file:\\" + dir + "\\server.jar"));
+			} else {
 				HashMap<String, Boolean> depMap = new HashMap<>();
 				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-windows.jar", true);
 				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.2.2/lwjgl-glfw-3.2.2-natives-windows.jar", true);
@@ -285,6 +281,7 @@ public class FlameLauncher {
 				}
 			});
 			field.append("Locked FlameMC classes\n");
+
 			ArrayList<Object> mods_list = new ArrayList<>();
 			try {
 				for (String s : mods) {
@@ -333,6 +330,7 @@ public class FlameLauncher {
 			if (version.contains("fabric")) {
 				System.setProperty("fabric.gameJarPath", dir + "\\versions\\" + version + "\\" + version + ".jar");
 			}
+			System.out.println(Arrays.toString(defaultArgs));
 			loader.loadClass(main_class).getMethod("main", String[].class).invoke(null, (Object) defaultArgs);
 		} catch (Throwable err) {
 			FlameConfig.logError(err);
@@ -397,6 +395,22 @@ public class FlameLauncher {
 			dir = FlameLauncher.getDir()+ "\\run";
 		}
 		return dir;
+	}
+
+	private static String[] removeInvalidArgs(String[] argsToBeCleaned) {
+		boolean isMainClass = false;
+		for (int i = 0; i < argsToBeCleaned.length; i++) {
+			if (argsToBeCleaned[i].equals("--serverDev")) {
+				argsToBeCleaned[i] = "";
+			} else if (argsToBeCleaned[i].equals("--main_class")) {
+				argsToBeCleaned[i] = "";
+				isMainClass = true;
+			} else if (isMainClass) {
+				argsToBeCleaned[i] = "";
+				isMainClass = false;
+			}
+		}
+		return argsToBeCleaned;
 	}
 
 	public static void unzip(String targetDir, String zipFilename, Function<String, Boolean> fileV) {

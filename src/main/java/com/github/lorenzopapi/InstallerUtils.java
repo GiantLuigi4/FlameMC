@@ -66,7 +66,7 @@ public class InstallerUtils {
 
 	public static File findVersionsDir() {
 		File dir;
-		dir = new File(findMCDir(FlameLauncher.isClientDev) + File.separator + "versions");
+		dir = new File(findMCDir(FlameLauncher.isDev) + File.separator + "versions");
 		if (!dir.exists())
 			dir.mkdirs();
 		return dir;

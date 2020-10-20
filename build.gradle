@@ -77,7 +77,7 @@ dependencies {
     compile group: 'org.ow2.asm', name: 'asm-util', version: '8.0.1'
     //https://mvnrepository.com/artifact/org.json/json
     extraLibs group: 'com.google.code.gson', name: 'gson', version: '2.2.4'
-    extraLibs group: 'net.lingala.zip4j', name: 'zip4j', version: '2.6.1'
+    extraLibs group: 'net.lingala.zip4j', name: 'zip4j', version: '2.6.3'
 
     //Flame Mod Loader (main)
     extraLibs 'com.github.GiantLuigi4:FlameLoader:6a1e436deb'
