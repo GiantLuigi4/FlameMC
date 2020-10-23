@@ -265,8 +265,8 @@ public class FlameLauncher {
 					downloadDepJustURL(dep);
 					if (unzip) {
 						try {
-							unzip(System.getProperty("user.dir") + "\\libs\\", System.getProperty("user.dir") + "\\libs\\" + fileName, (n) -> n.endsWith(".dll"));
-							Files.delete(Paths.get(System.getProperty("user.dir") + "\\libs\\" + fileName));
+							unzip(System.getProperty("user.dir") + "\\libraries\\", System.getProperty("user.dir") + "\\libraries\\" + fileName, (n) -> n.endsWith(".dll"));
+							Files.delete(Paths.get(System.getProperty("user.dir") + "\\libraries\\" + fileName));
 						} catch (Throwable ignored) {}
 					}
 				});
