@@ -195,7 +195,7 @@ public class FlameLauncher {
 				
 				@Override
 				public void windowClosed(WindowEvent e) {
-					exit(null,true, dir, finalVersion);
+					exit(null, true, dir, finalVersion);
 				}
 				
 				@Override public void windowIconified(WindowEvent e) { }
