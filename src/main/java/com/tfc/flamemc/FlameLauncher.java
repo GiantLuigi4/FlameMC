@@ -67,30 +67,35 @@ public class FlameLauncher {
 				break;
 			}
 		}
-
+		
 		JFrame frame = null;
-
+		
 		String version = "1.15.2-flame";
 		String gameDir = dir;
 		String main_class = null;
 		boolean isVersion = false;
 		boolean isDir = false;
 		boolean isMain = false;
-		String[] defaultArgs = new String[]{};
-		String[] immutableArgs = new String[]{
-			"--username", "FlameDev", "--assetsDir", findMCDir(false) + "\\assets\\", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
-		};
-
+//		String[] defaultArgs = new String[]{};
+//		String[] immutableArgs = new String[]{
+//			"--username", "FlameDev", "--assetsDir", findMCDir(false) + "\\assets\\", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
+//		};
+//
+//		if (args.length == 0) {
+//			defaultArgs = new String[]{
+//				"--username", "FlameDev", "--version", version, "--gameDir", gameDir, "--assetsDir", findMCDir(false) + "\\assets\\", "--assetIndex", version.substring(0, version.lastIndexOf(".")), "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
+//			};
+//		} else if (isDev) {
+//			defaultArgs = new String[immutableArgs.length + args.length];
+//			System.arraycopy(immutableArgs, 0, defaultArgs, 0, immutableArgs.length);
+//			System.arraycopy(args, 0, defaultArgs, immutableArgs.length, args.length);
+//		}
 		if (args.length == 0) {
-			defaultArgs = new String[]{
-				"--username", "FlameDev", "--version", version, "--gameDir", gameDir, "--assetsDir", findMCDir(false) + "\\assets\\", "--assetIndex", version.substring(0, version.lastIndexOf(".")), "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
+			args = new String[]{
+					"--username", "FlameDev", "--assetsDir", findMCDir(false) + "\\assets\\", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
 			};
-		} else if (isDev) {
-			defaultArgs = new String[immutableArgs.length + args.length];
-			System.arraycopy(immutableArgs, 0, defaultArgs, 0, immutableArgs.length);
-			System.arraycopy(args, 0, defaultArgs, immutableArgs.length, args.length);
 		}
-
+		
 		for (String s : args) {
 			if (s.equals("--version")) {
 				isVersion = true;
@@ -113,7 +118,7 @@ public class FlameLauncher {
 		}
 
 		if (isServer) {
-			defaultArgs = removeInvalidArgs(args);
+			args = removeInvalidArgs(args);
 		}
 
 		File flame_config = new File(gameDir + "\\flame_config\\flamemc.txt");
@@ -296,7 +301,7 @@ public class FlameLauncher {
 			} catch (Throwable err) {
 				FlameConfig.logError(err);
 			}
-			String[] finalDefaultArgs = defaultArgs;
+			String[] finalDefaultArgs = args;
 			mods_list.forEach(mod -> {
 				try {
 					if (loader.load("com.tfc.flame.IFlameAPIMod", false).isInstance(mod)) {
@@ -330,8 +335,8 @@ public class FlameLauncher {
 			if (version.contains("fabric")) {
 				System.setProperty("fabric.gameJarPath", dir + "\\versions\\" + version + "\\" + version + ".jar");
 			}
-			System.out.println(Arrays.toString(defaultArgs));
-			loader.loadClass(main_class).getMethod("main", String[].class).invoke(null, (Object) defaultArgs);
+			System.out.println(Arrays.toString(args));
+			loader.loadClass(main_class).getMethod("main", String[].class).invoke(null, (Object) args);
 		} catch (Throwable err) {
 			FlameConfig.logError(err);
 			if (frame == null) {
