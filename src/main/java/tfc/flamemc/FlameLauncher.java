@@ -1,10 +1,10 @@
-package com.tfc.flamemc;
+package tfc.flamemc;
 
-import com.tfc.flame.FlameConfig;
-import com.tfc.flame.FlameLog;
-import com.tfc.flame.FlameURLLoader;
-import com.tfc.utils.flame.FlameLoader;
-import com.tfc.utils.flame.dependency_management.Manager;
+import tfc.flame.FlameConfig;
+import tfc.flame.FlameLog;
+import tfc.flame.FlameURLLoader;
+import tfc.utils.flame.FlameLoader;
+import tfc.utils.flame.dependency_management.Manager;
 
 import javax.swing.*;
 import java.awt.event.WindowEvent;
@@ -30,14 +30,17 @@ public class FlameLauncher {
 					(new File(dir + "\\build").exists() ||
 							new File(dir + "\\build.gradle").exists()
 					);
-
+	
 	public static boolean isServer = false;
-
+	
 	public static ArrayList<Class<?>> lockedClasses = new ArrayList<>();
 	
 	private static FlameURLLoader loader;
 	public static FlameLoader loader1;
 	public static Manager dependencyManager;
+	
+	public static final ArrayList<Object> mods_list = new ArrayList<>();
+	public static String[] args = null;
 	
 	public static FlameURLLoader getLoader() {
 		return loader;
@@ -116,12 +119,12 @@ public class FlameLauncher {
 				isMain = false;
 			}
 		}
-
+		
 		if (isServer) {
 			args = removeInvalidArgs(args);
 		}
-
-		File flame_config = new File(gameDir + "\\flame_config\\flamemc.txt");
+		
+		File flame_config = new File(gameDir + "\\flame_config\\tfc.flamemc.txt");
 		boolean log = false;
 		boolean save_log = true;
 		if (!flame_config.exists()) {
@@ -216,12 +219,12 @@ public class FlameLauncher {
 		}
 		
 		try {
-			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameLauncher"));
-			lockedClasses.add(Class.forName("com.tfc.flamemc.FlameTextArea"));
-			lockedClasses.add(Class.forName("com.tfc.flame.IFlameMod"));
-			lockedClasses.add(Class.forName("com.tfc.flame.FlameConfig"));
-			lockedClasses.add(Class.forName("com.tfc.flame.FlameURLLoader"));
-			lockedClasses.add(Class.forName("com.tfc.flame.IFlameAPIMod"));
+			lockedClasses.add(Class.forName("tfc.flamemc.FlameLauncher"));
+			lockedClasses.add(Class.forName("tfc.flamemc.FlameTextArea"));
+			lockedClasses.add(Class.forName("tfc.flame.IFlameMod"));
+			lockedClasses.add(Class.forName("tfc.flame.FlameConfig"));
+			lockedClasses.add(Class.forName("tfc.flame.FlameURLLoader"));
+			lockedClasses.add(Class.forName("tfc.flame.IFlameAPIMod"));
 		} catch (Throwable ignored) {
 		}
 
@@ -287,7 +290,6 @@ public class FlameLauncher {
 			});
 			field.append("Locked FlameMC classes\n");
 
-			ArrayList<Object> mods_list = new ArrayList<>();
 			try {
 				for (String s : mods) {
 					File fi1 = new File(s);
@@ -302,41 +304,17 @@ public class FlameLauncher {
 				FlameConfig.logError(err);
 			}
 			String[] finalDefaultArgs = args;
-			mods_list.forEach(mod -> {
-				try {
-					if (loader.load("com.tfc.flame.IFlameAPIMod", false).isInstance(mod)) {
-						mod.getClass().getMethod("setupAPI", String[].class).invoke(mod, (Object) finalDefaultArgs);
-					}
-				} catch (Throwable err) {
-					FlameConfig.logError(err);
-				}
-			});
-			mods_list.forEach(mod -> {
-				try {
-					mod.getClass().getMethod("preinit", String[].class).invoke(mod, (Object) finalDefaultArgs);
-				} catch (Throwable err) {
-					FlameConfig.logError(err);
-				}
-			});
-			mods_list.forEach(mod -> {
-				try {
-					mod.getClass().getMethod("init", String[].class).invoke(mod, (Object) finalDefaultArgs);
-				} catch (Throwable err) {
-					FlameConfig.logError(err);
-				}
-			});
-			mods_list.forEach(mod -> {
-				try {
-					mod.getClass().getMethod("postinit", String[].class).invoke(mod, (Object) finalDefaultArgs);
-				} catch (Throwable err) {
-					FlameConfig.logError(err);
-				}
-			});
+			args = finalDefaultArgs;
+			Class<?> clazz = loader.load("tfc.flamemc.ModInitalizer", false);
+			clazz.newInstance();
 			if (version.contains("fabric")) {
 				System.setProperty("fabric.gameJarPath", dir + "\\versions\\" + version + "\\" + version + ".jar");
 			}
 			System.out.println(Arrays.toString(args));
-			loader.loadClass(main_class).getMethod("main", String[].class).invoke(null, (Object) args);
+			loader
+					.loadClass(main_class)
+					.getMethod("main", String[].class)
+					.invoke(null, (Object) args);
 		} catch (Throwable err) {
 			FlameConfig.logError(err);
 			if (frame == null) {

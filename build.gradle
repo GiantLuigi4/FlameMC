@@ -80,9 +80,9 @@ dependencies {
     extraLibs group: 'net.lingala.zip4j', name: 'zip4j', version: '2.6.3'
 
     //Flame Mod Loader (main)
-    extraLibs 'com.github.GiantLuigi4:FlameLoader:d65880df24'
+    extraLibs 'com.github.GiantLuigi4:FlameLoader:684398c863'
     //Creeper Utils (dependency management)
-    extraLibs 'com.github.GiantLuigi4:CreeperUtils:9283538f84'
+    extraLibs 'com.github.GiantLuigi4:CreeperUtils:b76adc6fee'
     configurations.compile.extendsFrom(configurations.extraLibs)
 }
 

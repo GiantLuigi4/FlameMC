@@ -5,8 +5,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonWriter;
-import com.tfc.flamemc.FlameLauncher;
 import net.lingala.zip4j.ZipFile;
+import tfc.flamemc.FlameLauncher;
 
 import javax.swing.*;
 import java.awt.*;
@@ -149,7 +149,7 @@ public class FlameInstaller {
 				if ((!flameTmpDir.exists() || flameTmpDir.length() == 0)) {
 					if (downloadedFromUrl.get() || fullOutput.length() == 0) {
 						log.append("\nUnzipping flame...");
-						InstallerUtils.unzip(flameTmpDir.getPath(), flameInstaller.getPath(), name -> (name.startsWith("com/tfc/") && name.endsWith(".class")));
+						InstallerUtils.unzip(flameTmpDir.getPath(), flameInstaller.getPath(), name -> (name.startsWith("tfc/") && name.endsWith(".class")));
 						log.append("\nUnzipping finished");
 					}
 				}
@@ -171,7 +171,7 @@ public class FlameInstaller {
 
 				if (!jsonOut.exists()) {
 					log.append("\nWriting Json");
-					FlamedJson launchJson = new FlamedJson(versionNumber + "-flame", versionNumber, "com.tfc.flamemc.FlameLauncher");
+					FlamedJson launchJson = new FlamedJson(versionNumber + "-flame", versionNumber, "tfc.flamemc.FlameLauncher");
 					launchJson.arguments.game = new ArrayList<>();
 					String mavenUrl = "https://repo1.maven.org/maven2/";
 					String asmRepo = "org.ow2.asm:asm";

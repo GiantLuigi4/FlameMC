@@ -1,7 +1,7 @@
 package com.github.lorenzopapi;
 
-import com.tfc.flamemc.FlameLauncher;
 import net.lingala.zip4j.ZipFile;
+import tfc.flamemc.FlameLauncher;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -37,16 +37,16 @@ public class FlameServer {
 		File jar = new File("server\\server.jar");
 		File tmp = new File("server\\tmp");
 		tmp.mkdirs();
-
+		
 		ZipFile zipFile = new ZipFile(jar);
-
+		
 		//FlameLauncher.downloadDepJustURL("https://repo1.maven.org/maven2/net/lingala/zip4j/zip4j/2.6.3/zip4j-2.6.3.jar");
-
-		FlameLauncher.unzip(tmp.getPath() + "\\", "build\\libs\\FlameInstaller.jar", name -> (name.startsWith("com/tfc/") && name.endsWith(".class")));
+		
+		FlameLauncher.unzip(tmp.getPath() + "\\", "build\\libs\\FlameInstaller.jar", name -> (name.startsWith("tfc/") && name.endsWith(".class")));
 		FlameLauncher.unzip(tmp.getPath() + "\\", jar.getPath(), name -> (name.startsWith("com") && !name.endsWith("/") && !name.endsWith(".class")));
-
+		
 		writeManifest(jar, tmp, zipFile);
-
+		
 		File com = new File(tmp + File.separator + "com");
 		zipFile.addFolder(com);
 		Files.walk(Paths.get(tmp.getPath()))
@@ -62,7 +62,7 @@ public class FlameServer {
 		manifest.createNewFile();
 		FileOutputStream writer = new FileOutputStream(manifest);
 		writer.write(("Manifest-Version: 1.0\n" +
-				              "Main-Class: com.tfc.flamemc.FlameLauncher\n").getBytes());
+				"Main-Class: tfc.flamemc.FlameLauncher\n").getBytes());
 		writer.close();
 		File meta = new File(tmp + "\\META-INF");
 		zipFile.addFolder(meta);

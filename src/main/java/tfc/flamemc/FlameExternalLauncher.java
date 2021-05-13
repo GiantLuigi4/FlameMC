@@ -1,6 +1,6 @@
-package com.tfc.flamemc;
+package tfc.flamemc;
 
-import com.tfc.flame.FlameConfig;
+import tfc.flame.FlameConfig;
 
 import javax.swing.*;
 import java.io.File;
