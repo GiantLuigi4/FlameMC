@@ -42,7 +42,7 @@ public class FlameLauncher {
 	public static String[] gameArgs = null;
 	
 	public static byte[] getSourceFile(File file, String entryName) {
-		return classFiles.get(file.getAbsolutePath()).get(entryName);
+		return classFiles.get(file.getAbsoluteFile()).get(entryName);
 	}
 	
 	public static File getJarForEntry(String name) {
