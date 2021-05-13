@@ -9,10 +9,7 @@ import tfc.utils.flame.dependency_management.Manager;
 import javax.swing.*;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +17,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -40,7 +38,19 @@ public class FlameLauncher {
 	public static Manager dependencyManager;
 	
 	public static final ArrayList<Object> mods_list = new ArrayList<>();
-	public static String[] args = null;
+	private static final HashMap<File, HashMap<String, byte[]>> classFiles = new HashMap<>();
+	public static String[] gameArgs = null;
+	
+	public static byte[] getSourceFile(File file, String entryName) {
+		return classFiles.get(file.getAbsolutePath()).get(entryName);
+	}
+	
+	public static File getJarForEntry(String name) {
+		for (File file : classFiles.keySet())
+			if (classFiles.get(file).containsKey(name))
+				return file;
+		return null;
+	}
 	
 	public static FlameURLLoader getLoader() {
 		return loader;
@@ -233,14 +243,44 @@ public class FlameLauncher {
 			File fi = new File(gameDir + "\\flame_mods");
 			if (!fi.exists()) fi.mkdirs();
 			
-			for (File fi1 : Objects.requireNonNull(fi.listFiles())) mods.add(fi1.getPath());
+			for (File fi1 : Objects.requireNonNull(fi.listFiles())) {
+				mods.add(fi1.getPath());
+				ZipFile fileZip = new ZipFile(fi1);
+				Stream<ZipEntry> entryStream = (Stream<ZipEntry>) fileZip.stream();
+				HashMap<String, byte[]> entryBytes = new HashMap<>();
+				classFiles.put(fi1.getAbsoluteFile(), entryBytes);
+				entryStream.forEach((entry) -> {
+					if (entry.isDirectory()) return;
+					InputStream stream = null;
+					ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+					try {
+						stream = fileZip.getInputStream(entry);
+						int b;
+						while ((b = stream.read()) != -1) outStream.write(b);
+					} catch (Throwable ignored) {
+					}
+					entryBytes.put(entry.toString(), outStream.toByteArray());
+					if (stream != null) {
+						try {
+							stream.close();
+						} catch (Throwable err) {
+							err.printStackTrace();
+						}
+					}
+					try {
+						outStream.flush();
+						outStream.close();
+					} catch (Throwable ignored) {
+					}
+				});
+			}
 			
 			URL[] urls = new URL[mods.size() + 1 + additionalURLs.size()];
-
+			
 			if (!isServer) {
 				urls[0] = new File(dir + "\\versions\\" + version + "\\" + version + ".jar").toURL();
 			}
-
+			
 			for (int i = 0; i < mods.size(); i++) {
 				String s = mods.get(i);
 				File fi1 = new File(s);
@@ -304,7 +344,7 @@ public class FlameLauncher {
 				FlameConfig.logError(err);
 			}
 			String[] finalDefaultArgs = args;
-			args = finalDefaultArgs;
+			gameArgs = finalDefaultArgs;
 			Class<?> clazz = loader.load("tfc.flamemc.ModInitalizer", false);
 			clazz.newInstance();
 			if (version.contains("fabric")) {
