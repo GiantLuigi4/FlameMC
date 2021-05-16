@@ -293,7 +293,7 @@ public class FlameLauncher {
 				}
 				try {
 					int i = name.lastIndexOf('.');
-					String pkgname = i > 0 ? name.substring(0, i) : "";
+					String pkgname = i > 0 ? name.replace(".class", "").replace("/", ".").substring(0, i) : "";
 					if (mf != null && f != null) {
 						if (loader.getPackage(pkgname) == null) {
 							loader.definePackage(pkgname, mf, f.toURL());
