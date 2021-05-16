@@ -393,6 +393,39 @@ public class FlameLauncher {
 		String name = url.substring(url.lastIndexOf("/") + 1);
 		try {
 			dependencyManager.addFromURL("libraries\\" + name + "," + url);
+			File file = new File("libraries\\" + name);
+			try {
+				ZipFile fileZip = new ZipFile(file);
+				Stream<ZipEntry> entryStream = (Stream<ZipEntry>) fileZip.stream();
+				HashMap<String, byte[]> entryBytes = new HashMap<>();
+				classFiles.put(file.getAbsoluteFile(), entryBytes);
+				entryStream.forEach((entry) -> {
+					if (entry.isDirectory()) return;
+					InputStream stream = null;
+					ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+					try {
+						stream = fileZip.getInputStream(entry);
+						int b;
+						while ((b = stream.read()) != -1) outStream.write(b);
+					} catch (Throwable ignored) {
+					}
+					entryBytes.put(entry.toString(), outStream.toByteArray());
+					if (stream != null) {
+						try {
+							stream.close();
+						} catch (Throwable err) {
+							err.printStackTrace();
+						}
+					}
+					try {
+						outStream.flush();
+						outStream.close();
+					} catch (Throwable ignored) {
+					}
+				});
+			} catch (Throwable ignored) {
+				ignored.printStackTrace();
+			}
 		} catch (Throwable err) {
 			FlameLauncher.downloadDep(name, url);
 		}
@@ -447,5 +480,38 @@ public class FlameLauncher {
 
 	public static void downloadDep(String name, String url) {
 		dependencyManager.addFromURL("libraries\\" + name + "," + url);
+		File file = new File("libraries\\" + name);
+		try {
+			ZipFile fileZip = new ZipFile(file);
+			Stream<ZipEntry> entryStream = (Stream<ZipEntry>) fileZip.stream();
+			HashMap<String, byte[]> entryBytes = new HashMap<>();
+			classFiles.put(file.getAbsoluteFile(), entryBytes);
+			entryStream.forEach((entry) -> {
+				if (entry.isDirectory()) return;
+				InputStream stream = null;
+				ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+				try {
+					stream = fileZip.getInputStream(entry);
+					int b;
+					while ((b = stream.read()) != -1) outStream.write(b);
+				} catch (Throwable ignored) {
+				}
+				entryBytes.put(entry.toString(), outStream.toByteArray());
+				if (stream != null) {
+					try {
+						stream.close();
+					} catch (Throwable err) {
+						err.printStackTrace();
+					}
+				}
+				try {
+					outStream.flush();
+					outStream.close();
+				} catch (Throwable ignored) {
+				}
+			});
+		} catch (Throwable ignored) {
+			ignored.printStackTrace();
+		}
 	}
 }
