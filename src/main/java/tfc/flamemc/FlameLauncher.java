@@ -15,8 +15,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.security.CodeSource;
 import java.util.*;
 import java.util.function.Function;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -67,26 +70,26 @@ public class FlameLauncher {
 	public static void main(String[] args) {
 		FlameConfig.field = field;
 		field.append("Starting up FlameMC\n");
-
+		
 		if (isDev) dir = dir + "\\run";
-
+		
 		List<String> argsLists = Arrays.asList(args);
 		if (argsLists.contains("--serverDev")) {
 			isServer = true;
 			dir = System.getProperty("user.dir") + "\\server\\";
 		}
-
+		
 		JFrame frame = null;
-
-		String version = "1.15.2-flame";
+		
+		String version = "1.16.5";
 		String gameDir = dir;
 		String main_class = null;
-
-
-		String[] globalArgs = new String[] {
+		
+		
+		String[] globalArgs = new String[]{
 				"--gameDir", gameDir, "--username", "FlameDev", "--assetsDir", findMCDir(false) + "\\assets\\", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
 		};
-
+		
 		List<String> actualArgs = new ArrayList<>(Arrays.asList(globalArgs));
 
 		if (args.length == 0) {
@@ -264,10 +267,32 @@ public class FlameLauncher {
 				urls[i + mods.size() + 1] = new File(s).toURL();
 			}
 			
-			loader = new FlameURLLoader(urls);
+			loader = new FlameURLLoader(urls, FlameLauncher.class.getClassLoader());
+			loader.classDefiner = (name, bytes) -> {
+				name = name.replace(".", "/") + ".class";
+				File f = getJarForEntry(name);
+				CodeSource source = null;
+				if (f == null) {
+					try {
+						URL url = loader.getParent().getResource(name);
+						System.out.println(url.getFile());
+					} catch (Throwable ignored) {
+					}
+				} else {
+					try {
+						JarFile file = new JarFile(f);
+						JarEntry entry = file.getJarEntry(name);
+						source = new CodeSource(f.toURL(), entry.getCodeSigners());
+						file.close();
+					} catch (Throwable ignored) {
+					}
+				}
+				if (source != null) return loader.define(name.replace(".class", "").replace("/", "."), bytes, source);
+				else return loader.define(name.replace(".class", "").replace("/", "."), bytes);
+			};
 			loader1 = new FlameLoader(loader);
 			dependencyManager = new Manager(loader);
-
+			
 			if (isServer) {
 				loader.addURL(new URL("file:\\" + dir + "\\server.jar"));
 			} else {
