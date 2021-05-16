@@ -98,15 +98,17 @@ public class FlameLauncher {
 			actualArgs.add("--version");
 			actualArgs.add(version);
 		} else {
+			actualArgs.clear();
+			
 			System.out.println("Found some args: " + Arrays.toString(args) + ".");
-
+			
 			if (argsLists.contains("--version")) version = argsLists.get(argsLists.indexOf("--version") + 1);
 			if (argsLists.contains("--gameDir")) gameDir = argsLists.get(argsLists.indexOf("--gameDir") + 1);
 			if (argsLists.contains("--main_class")) {
 				main_class = argsLists.get(argsLists.indexOf("--main_class") + 1);
 				if (main_class.contains("MinecraftServer")) isServer = true;
 			}
-
+			
 			if (isServer) {
 				argsLists.remove("--serverDev");
 				argsLists.remove("--main_class");
@@ -114,15 +116,17 @@ public class FlameLauncher {
 			}
 			actualArgs.addAll(argsLists);
 		}
-		actualArgs.add("--assetIndex");
-		if (version.indexOf(".") != version.lastIndexOf(".")) {
-			actualArgs.add(version.substring(0, version.lastIndexOf(".")));
-		} else {
-			actualArgs.add(version.substring(0, version.indexOf("-")));
+		if (!actualArgs.contains("--assetIndex")) {
+			actualArgs.add("--assetIndex");
+			if (version.indexOf(".") != version.lastIndexOf(".")) {
+				actualArgs.add(version.substring(0, version.lastIndexOf(".")));
+			} else {
+				actualArgs.add(version.substring(0, version.indexOf("-")));
+			}
 		}
-
+		
 		System.out.println("Args that will be used: " + Arrays.toString(actualArgs.toArray()));
-
+		
 		File flame_config = new File(gameDir + "\\flame_config\\tfc.flamemc.txt");
 		boolean log = false;
 		boolean save_log = true;
