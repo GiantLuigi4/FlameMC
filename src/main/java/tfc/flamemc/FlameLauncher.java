@@ -20,6 +20,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -272,8 +273,10 @@ public class FlameLauncher {
 				name = name.replace(".", "/") + ".class";
 				File f = getJarForEntry(name);
 				CodeSource source = null;
+				Manifest mf = null;
 				if (f == null) {
 					try {
+						// TODO: this
 						URL url = loader.getParent().getResource(name);
 						System.out.println(url.getFile());
 					} catch (Throwable ignored) {
@@ -283,9 +286,20 @@ public class FlameLauncher {
 						JarFile file = new JarFile(f);
 						JarEntry entry = file.getJarEntry(name);
 						source = new CodeSource(f.toURL(), entry.getCodeSigners());
+						mf = file.getManifest();
 						file.close();
 					} catch (Throwable ignored) {
 					}
+				}
+				try {
+					int i = name.lastIndexOf('.');
+					String pkgname = i > 0 ? name.substring(0, i) : "";
+					if (mf != null && f != null) {
+						if (loader.getPackage(pkgname) == null) {
+							loader.definePackage(pkgname, mf, f.toURL());
+						}
+					}
+				} catch (Throwable ignored) {
 				}
 				if (source != null) return loader.define(name.replace(".class", "").replace("/", "."), bytes, source);
 				else return loader.define(name.replace(".class", "").replace("/", "."), bytes);
