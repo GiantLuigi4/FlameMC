@@ -28,9 +28,9 @@ import java.util.zip.ZipFile;
 public class FlameLauncher {
 	private static String dir = System.getProperty("user.dir");
 	public static boolean isDev =
-			new File(dir + "\\src").exists() &&
-					(new File(dir + "\\build").exists() ||
-							new File(dir + "\\build.gradle").exists()
+			new File(dir + File.separator + "src").exists() &&
+					(new File(dir + File.separator + "build").exists() ||
+							new File(dir + File.separator + "build.gradle").exists()
 					);
 	
 	public static boolean isServer = false;
@@ -72,12 +72,12 @@ public class FlameLauncher {
 		FlameConfig.field = field;
 		field.append("Starting up FlameMC\n");
 		
-		if (isDev) dir = dir + "\\run";
+		if (isDev) dir = dir + File.separator + "run";
 		
 		List<String> argsLists = Arrays.asList(args);
 		if (argsLists.contains("--serverDev")) {
 			isServer = true;
-			dir = System.getProperty("user.dir") + "\\server\\";
+			dir = System.getProperty("user.dir") + File.separator + "server" + File.separator;
 		}
 		
 		JFrame frame = null;
@@ -88,7 +88,7 @@ public class FlameLauncher {
 		
 		
 		String[] globalArgs = new String[]{
-				"--gameDir", gameDir, "--username", "FlameDev", "--assetsDir", findMCDir(false) + "\\assets\\", "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
+				"--gameDir", gameDir, "--username", "FlameDev", "--assetsDir", findMCDir(false) + File.separator + "assets" + File.separator, "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
 		};
 		
 		List<String> actualArgs = new ArrayList<>(Arrays.asList(globalArgs));
@@ -127,7 +127,7 @@ public class FlameLauncher {
 		
 		System.out.println("Args that will be used: " + Arrays.toString(actualArgs.toArray()));
 		
-		File flame_config = new File(gameDir + "\\flame_config\\tfc.flamemc.txt");
+		File flame_config = new File(gameDir + File.separator + "flame_config" + File.separator + "tfc.flamemc.txt");
 		boolean log = false;
 		boolean save_log = true;
 		if (!flame_config.exists()) {
@@ -166,7 +166,7 @@ public class FlameLauncher {
 		}
 		
 		if (main_class == null) {
-			File version_config = new File(dir + "\\versions\\" + version + "\\options.txt");
+			File version_config = new File(dir + File.separator + "versions" + File.separator + version + File.separator + "options.txt");
 			if (!version_config.exists()) {
 				try {
 					version_config.getParentFile().mkdirs();
@@ -220,7 +220,7 @@ public class FlameLauncher {
 
 		try {
 			ArrayList<String> mods = new ArrayList<>();
-			File modsFolder = new File(gameDir + "\\flame_mods");
+			File modsFolder = new File(gameDir + File.separator + "flame_mods");
 			if (!modsFolder.exists()) modsFolder.mkdirs();
 			else {
 				for (File modFile : Objects.requireNonNull(modsFolder.listFiles())) {
@@ -259,7 +259,7 @@ public class FlameLauncher {
 			URL[] urls = new URL[mods.size() + 1 + additionalURLs.size()];
 			
 			if (!isServer) {
-				urls[0] = new File(dir + "\\versions\\" + version + "\\" + version + ".jar").toURL();
+				urls[0] = new File(dir + File.separator + "versions" + File.separator + version + File.separator + "" + version + ".jar").toURL();
 			}
 			
 			for (int i = 0; i < mods.size(); i++) {
@@ -313,7 +313,7 @@ public class FlameLauncher {
 			dependencyManager = new Manager(loader);
 			
 			if (isServer) {
-				loader.addURL(new URL("file:\\" + dir + "\\server.jar"));
+				loader.addURL(new URL("file:\\" + dir + File.separator + "server.jar"));
 			} else {
 				HashMap<String, Boolean> depMap = new HashMap<>();
 				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-windows.jar", true);
@@ -328,8 +328,8 @@ public class FlameLauncher {
 					downloadDepJustURL(dep);
 					if (unzip) {
 						try {
-							unzip(System.getProperty("user.dir") + "\\libraries\\", System.getProperty("user.dir") + "\\libraries\\" + fileName, (n) -> n.endsWith(".dll"));
-							Files.delete(Paths.get(System.getProperty("user.dir") + "\\libraries\\" + fileName));
+							unzip(System.getProperty("user.dir") + File.separator + "libraries" + File.separator, System.getProperty("user.dir") + File.separator + "libraries" + File.separator + fileName, (n) -> n.endsWith(".dll"));
+							Files.delete(Paths.get(System.getProperty("user.dir") + File.separator + "libraries" + File.separator + fileName));
 						} catch (Throwable ignored) {}
 					}
 				});
@@ -363,7 +363,7 @@ public class FlameLauncher {
 			Class<?> clazz = loader.load("tfc.flamemc.ModInitalizer", false);
 			clazz.newInstance();
 			if (version.contains("fabric")) {
-				System.setProperty("fabric.gameJarPath", dir + "\\versions\\" + version + "\\" + version + ".jar");
+				System.setProperty("fabric.gameJarPath", dir + File.separator + "versions" + File.separator + version + File.separator + "" + version + ".jar");
 			}
 			loader
 					.loadClass(main_class)
@@ -389,9 +389,9 @@ public class FlameLauncher {
 	private static void exit(Throwable err, boolean save_log, String dir, String version) {
 		if (save_log) {
 			try {
-				File fi = new File(dir + "\\flame_logs\\" + version);
+				File fi = new File(dir + File.separator + "flame_logs" + File.separator + version);
 				if (!fi.exists()) fi.mkdirs();
-				fi = new File(dir + "\\flame_logs\\" + version + "\\" + System.nanoTime() + ".txt");
+				fi = new File(dir + File.separator + "flame_logs" + File.separator + version + File.separator + "" + System.nanoTime() + ".txt");
 				fi.createNewFile();
 				FileWriter writer = new FileWriter(fi);
 				writer.write(field.getText());
@@ -411,8 +411,8 @@ public class FlameLauncher {
 	public static void downloadDepJustURL(String url) {
 		String name = url.substring(url.lastIndexOf("/") + 1);
 		try {
-			dependencyManager.addFromURL("libraries\\" + name + "," + url);
-			File file = new File("libraries\\" + name);
+			dependencyManager.addFromURL("libraries" + File.separator + name + "," + url);
+			File file = new File("libraries" + File.separator + name);
 			try {
 				ZipFile fileZip = new ZipFile(file);
 				Stream<ZipEntry> entryStream = (Stream<ZipEntry>) fileZip.stream();
@@ -463,7 +463,7 @@ public class FlameLauncher {
 				dir = home + ".minecraft";
 			}
 		} else {
-			dir = FlameLauncher.getDir()+ "\\run";
+			dir = FlameLauncher.getDir()+ File.separator + "run";
 		}
 		return dir;
 	}
@@ -498,8 +498,8 @@ public class FlameLauncher {
 	}
 
 	public static void downloadDep(String name, String url) {
-		dependencyManager.addFromURL("libraries\\" + name + "," + url);
-		File file = new File("libraries\\" + name);
+		dependencyManager.addFromURL("libraries" + File.separator + name + "," + url);
+		File file = new File("libraries" + File.separator + name);
 		try {
 			ZipFile fileZip = new ZipFile(file);
 			Stream<ZipEntry> entryStream = (Stream<ZipEntry>) fileZip.stream();
