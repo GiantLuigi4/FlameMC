@@ -54,12 +54,12 @@ public class InstallerUtils {
 			if (os.contains("win") && System.getenv("APPDATA") != null) {
 				dir = System.getenv("APPDATA") + File.separator + ".minecraft";
 			} else if (os.contains("mac")) {
-				dir = home + "Library" + File.separator + "Application Support" + File.separator + "minecraft";
+				dir = home + File.separator + "Library" + File.separator + "Application Support" + File.separator + "minecraft";
 			} else {
-				dir = home + ".minecraft";
+				dir = home + File.separator + ".minecraft";
 			}
 		} else {
-			dir = FlameLauncher.getDir()+ "\\run";
+			dir = FlameLauncher.getDir() + File.separator + "run";
 		}
 		return dir;
 	}
@@ -93,7 +93,7 @@ public class InstallerUtils {
 		try {
 			URL url = new URL(urlString);
 			reader = new BufferedReader(new InputStreamReader(url.openStream()));
-			StringBuffer buffer = new StringBuffer();
+			StringBuilder buffer = new StringBuilder();
 			int read;
 			char[] chars = new char[1024];
 			while ((read = reader.read(chars)) != -1)

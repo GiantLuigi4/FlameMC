@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonWriter;
 import net.lingala.zip4j.ZipFile;
-import tfc.flamemc.FlameLauncher;
 
 import javax.swing.*;
 import java.awt.*;
@@ -37,11 +36,12 @@ public class FlameInstaller {
 		textPanel.setSize(640, 320);
 		JTextField setVersionPath = new JTextField();
 		setVersionPath.setSize(640, 320);
-		setVersionPath.setText(InstallerUtils.findVersionsDir() + File.separator + "1.16.2");
+		String lastVersion = "1.16.5";
+		setVersionPath.setText(InstallerUtils.findVersionsDir() + File.separator + lastVersion);
 		textPanel.add(setVersionPath);
 
 		JPanel installPanel = new JPanel();
-		JButton installButton = new JButton("Install for 1.16.2");
+		JButton installButton = new JButton("Install for " + lastVersion);
 		installButton.addActionListener(e -> {
 			setVersionPath.setEnabled(false);
 			installButton.setEnabled(false);
@@ -92,7 +92,7 @@ public class FlameInstaller {
 				Gson gson = new Gson();
 				String versionPath = setVersionPath.getText();
 				String versionNumber = new File(versionPath).getName();
-				File flameInstaller = new File(FlameLauncher.getDir() + File.separator + "FlameInstaller.jar");
+				File flameInstaller = new File(System.getProperty("user.dir") + File.separator + "FlameInstaller.jar");
 				File inputMinecraftJar = new File(versionPath + File.separator + versionNumber + ".jar");
 				String versions = InstallerUtils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json");
 				File jsonIn = new File(versionPath + File.separator + versionNumber + ".json");
@@ -140,6 +140,7 @@ public class FlameInstaller {
 
 				File flameTmpDir = new File(outputFlameDir + File.separator + "tmp");
 				File jsonOut = new File(outputFlameDir + File.separator + versionNumber + "-flame.json");
+				flameTmpDir.mkdirs();
 				if (!downloadedFromUrl.get() && fullOutput.exists()) {
 					fullOutput.delete();
 					fullOutput.createNewFile();
@@ -216,6 +217,8 @@ public class FlameInstaller {
 				String timePass = Long.toString(timePassed);
 				log.append("\nInstallation took " + timePass + " milliseconds.\n");
 				downloadedFromUrl.set(false);
+				Thread.sleep(2);
+				System.exit(0);
 			} catch (Throwable err) {
 				log.append("\n" + err.getMessage());
 				for (StackTraceElement element : err.getStackTrace()) {
