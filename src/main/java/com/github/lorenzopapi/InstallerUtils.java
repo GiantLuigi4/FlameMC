@@ -21,7 +21,7 @@ public class InstallerUtils {
 		Path targetDirPath = Paths.get(targetDir);
 		try (ZipFile zipFile = new ZipFile(zipFilename)) {
 			zipFile.stream()
-					.parallel() // enable multi-threading
+					.parallel()
 					.forEach(e -> unzipEntry(zipFile, e, targetDirPath, fileV));
 		} catch (IOException e) {
 			throw new RuntimeException("Error opening zip file '" + zipFilename + "': " + e, e);
@@ -46,37 +46,32 @@ public class InstallerUtils {
 		}
 	}
 
-	public static String findMCDir(boolean isDev) {
+	public static File findVersionsDir() {
 		String home = System.getProperty("user.home", ".");
 		String os = System.getProperty("os.name").toLowerCase();
-		String dir;
-		if (!isDev) {
+		String mcDir;
+		if (!FlameLauncher.isDev) {
 			if (os.contains("win") && System.getenv("APPDATA") != null) {
-				dir = System.getenv("APPDATA") + File.separator + ".minecraft";
+				mcDir = System.getenv("APPDATA") + File.separator + ".minecraft";
 			} else if (os.contains("mac")) {
-				dir = home + File.separator + "Library" + File.separator + "Application Support" + File.separator + "minecraft";
+				mcDir = home + File.separator + "Library" + File.separator + "Application Support" + File.separator + "minecraft";
 			} else {
-				dir = home + File.separator + ".minecraft";
+				mcDir = home + File.separator + ".minecraft";
 			}
 		} else {
-			dir = FlameLauncher.getDir() + File.separator + "run";
+			mcDir = FlameLauncher.getDir() + File.separator + "run";
 		}
-		return dir;
-	}
-
-	public static File findVersionsDir() {
-		File dir;
-		dir = new File(findMCDir(FlameLauncher.isDev) + File.separator + "versions");
+		File dir = new File(mcDir + File.separator + "versions");
 		if (!dir.exists())
 			dir.mkdirs();
 		return dir;
 	}
 
 	public static void downloadFromUrl(String url, String downloadFile) throws IOException {
-		File testFile = new File(downloadFile);
-		if (!testFile.exists()) {
-			testFile.getParentFile().mkdirs();
-			testFile.createNewFile();
+		File f = new File(downloadFile);
+		if (!f.exists()) {
+			f.getParentFile().mkdirs();
+			f.createNewFile();
 		}
 		try (BufferedInputStream inputStream = new BufferedInputStream(new URL(url).openStream());
 			FileOutputStream fileOS = new FileOutputStream(downloadFile)) {
@@ -98,7 +93,6 @@ public class InstallerUtils {
 			char[] chars = new char[1024];
 			while ((read = reader.read(chars)) != -1)
 				buffer.append(chars, 0, read);
-
 			return buffer.toString();
 		} finally {
 			if (reader != null)

@@ -76,8 +76,8 @@ public class FlameLauncher {
 		
 		List<String> argsLists = Arrays.asList(args);
 		if (argsLists.contains("--serverDev")) {
-			isServer = true;
 			dir = System.getProperty("user.dir") + File.separator + "server" + File.separator;
+			isServer = true;
 		}
 		
 		JFrame frame = null;
@@ -85,8 +85,7 @@ public class FlameLauncher {
 		String version = "1.16.5";
 		String gameDir = dir;
 		String main_class = null;
-		
-		
+
 		String[] globalArgs = new String[]{
 				"--gameDir", gameDir, "--username", "FlameDev", "--assetsDir", findMCDir(false) + File.separator + "assets" + File.separator, "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
 		};
@@ -311,7 +310,7 @@ public class FlameLauncher {
 			};
 			loader1 = new FlameLoader(loader);
 			dependencyManager = new Manager(loader);
-			
+
 			if (isServer) {
 				loader.addURL(new URL("file:\\" + dir + File.separator + "server.jar"));
 			} else {
@@ -363,7 +362,7 @@ public class FlameLauncher {
 			Class<?> clazz = loader.load("tfc.flamemc.ModInitalizer", false);
 			clazz.newInstance();
 			if (version.contains("fabric")) {
-				System.setProperty("fabric.gameJarPath", dir + File.separator + "versions" + File.separator + version + File.separator + "" + version + ".jar");
+				System.setProperty("fabric.gameJarPath", dir + File.separator + "versions" + File.separator + version + File.separator + version + ".jar");
 			}
 			loader
 					.loadClass(main_class)
@@ -402,8 +401,6 @@ public class FlameLauncher {
 		if (err != null) throw new RuntimeException(err);
 	}
 
-	//Do we still need this?
-	//LUIIGI ANSWER MEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
 	public static void addClassReplacement(String clazz) {
 		loader.findReplacement(clazz);
 	}
