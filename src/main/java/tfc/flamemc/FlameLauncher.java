@@ -87,7 +87,7 @@ public class FlameLauncher {
 		String main_class = null;
 
 		String[] globalArgs = new String[]{
-				"--gameDir", gameDir, "--username", "FlameDev", "--assetsDir", findMCDir(false) + File.separator + "assets" + File.separator, "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
+				"--gameDir", gameDir, "--username", "FlameDev", "--assetsDir", findMCDir() + File.separator + "assets" + File.separator, "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", "release"
 		};
 		
 		List<String> actualArgs = new ArrayList<>(Arrays.asList(globalArgs));
@@ -315,11 +315,20 @@ public class FlameLauncher {
 				loader.addURL(new URL("file:\\" + dir + File.separator + "server.jar"));
 			} else {
 				HashMap<String, Boolean> depMap = new HashMap<>();
-				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-windows.jar", true);
-				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.2.2/lwjgl-glfw-3.2.2-natives-windows.jar", true);
-				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-opengl/3.2.2/lwjgl-opengl-3.2.2-natives-windows.jar", true);
-				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-stb/3.2.2/lwjgl-stb-3.2.2-natives-windows.jar", true);
-				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-openal/3.2.2/lwjgl-openal-3.2.2-natives-windows.jar", true);
+				String os = System.getProperty("os.name").toLowerCase();
+				String download;
+				if (os.contains("win")) {
+					download = "windows";
+				} else if (os.contains("mac")) {
+					download = "macos";
+				} else {
+					download = "linux";
+				}
+				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-" + download + ".jar", true);
+				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.2.2/lwjgl-glfw-3.2.2-natives-" + download + ".jar", true);
+				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-opengl/3.2.2/lwjgl-opengl-3.2.2-natives-" + download + ".jar", true);
+				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-stb/3.2.2/lwjgl-stb-3.2.2-natives-" + download + ".jar", true);
+				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-openal/3.2.2/lwjgl-openal-3.2.2-natives-" + download + ".jar", true);
 				depMap.put("https://libraries.minecraft.net/com/mojang/brigadier/1.0.17/brigadier-1.0.17.jar", false);
 				depMap.put("https://libraries.minecraft.net/com/mojang/datafixerupper/2.0.24/datafixerupper-2.0.24.jar", false);
 				depMap.forEach((dep, unzip) -> {
@@ -447,22 +456,18 @@ public class FlameLauncher {
 		}
 	}
 
-	public static String findMCDir(boolean isDev) {
+	public static String findMCDir() {
 		String home = System.getProperty("user.home", ".");
 		String os = System.getProperty("os.name").toLowerCase();
-		String dir;
-		if (!isDev) {
-			if (os.contains("win") && System.getenv("APPDATA") != null) {
-				dir = System.getenv("APPDATA") + File.separator + ".minecraft";
-			} else if (os.contains("mac")) {
-				dir = home + "Library" + File.separator + "Application Support" + File.separator + "minecraft";
-			} else {
-				dir = home + ".minecraft";
-			}
+		String mcDir;
+		if (os.contains("win") && System.getenv("APPDATA") != null) {
+			mcDir = System.getenv("APPDATA") + File.separator + ".minecraft";
+		} else if (os.contains("mac")) {
+			mcDir = home + File.separator + "Library" + File.separator + "Application Support" + File.separator + "minecraft";
 		} else {
-			dir = FlameLauncher.getDir()+ File.separator + "run";
+			mcDir = home + File.separator + ".minecraft";
 		}
-		return dir;
+		return mcDir;
 	}
 
 	public static void unzip(String targetDir, String zipFilename, Function<String, Boolean> fileV) {
