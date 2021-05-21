@@ -214,55 +214,22 @@ public class FlameLauncher {
 			lockedClasses.add(Class.forName("tfc.flame.FlameConfig"));
 			lockedClasses.add(Class.forName("tfc.flame.FlameURLLoader"));
 			lockedClasses.add(Class.forName("tfc.flame.IFlameAPIMod"));
-		} catch (Throwable ignored) {}
 
-		try {
 			ArrayList<String> mods = new ArrayList<>();
 			File modsFolder = new File(gameDir + File.separator + "flame_mods");
-			if (!modsFolder.exists()) modsFolder.mkdirs();
-			else {
-				for (File modFile : Objects.requireNonNull(modsFolder.listFiles())) {
-					mods.add(modFile.getPath());
-					ZipFile fileZip = new ZipFile(modFile);
-					Stream<ZipEntry> entryStream = (Stream<ZipEntry>) fileZip.stream();
-					HashMap<String, byte[]> entryBytes = new HashMap<>();
-					classFiles.put(modFile.getAbsoluteFile(), entryBytes);
-					entryStream.forEach((entry) -> {
-						if (entry.isDirectory()) return;
-						InputStream stream = null;
-						ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-						try {
-							stream = fileZip.getInputStream(entry);
-							int b;
-							while ((b = stream.read()) != -1) outStream.write(b);
-						} catch (Throwable ignored) {
-						}
-						entryBytes.put(entry.toString(), outStream.toByteArray());
-						if (stream != null) {
-							try {
-								stream.close();
-							} catch (Throwable err) {
-								err.printStackTrace();
-							}
-						}
-						try {
-							outStream.flush();
-							outStream.close();
-						} catch (Throwable ignored) {
-						}
-					});
-				}
+			modsFolder.mkdirs();
+			for (File modFile : Objects.requireNonNull(modsFolder.listFiles())) {
+				mods.add(modFile.getPath());
+				readZip(modFile);
 			}
 
+
 			URL[] urls = new URL[mods.size() + 1 + additionalURLs.size()];
-
 			urls[0] = new File(dir + File.separator + "versions" + File.separator + version + File.separator + "" + version + ".jar").toURL();
-
 			for (int i = 0; i < mods.size(); i++) {
 				String s = mods.get(i);
 				urls[i + 1] = new File(s).toURL();
 			}
-
 			for (int i = 0; i < additionalURLs.size(); i++) {
 				String s = additionalURLs.get(i);
 				urls[i + mods.size() + 1] = new File(s).toURL();
@@ -295,7 +262,7 @@ public class FlameLauncher {
 					String pkgname = name.replace(".class", "").replace("/", ".");
 					int i = pkgname.lastIndexOf('.');
 					pkgname = i > 0 ? pkgname.substring(0, i) : "";
-					if (mf != null && f != null) {
+					if (mf != null) {
 						if (loader.getPackage(pkgname) == null) {
 							loader.definePackage(pkgname, mf, f.toURL());
 						}
@@ -417,43 +384,38 @@ public class FlameLauncher {
 		loader.findReplacement(clazz);
 	}
 
+	public static void readZip(File f) {
+		try {
+			ZipFile fileZip = new ZipFile(f);
+			Stream<ZipEntry> entryStream = (Stream<ZipEntry>) fileZip.stream();
+			HashMap<String, byte[]> entryBytes = new HashMap<>();
+			classFiles.put(f.getAbsoluteFile(), entryBytes);
+			entryStream.forEach((entry) -> {
+				try {
+					if (entry.isDirectory()) return;
+					InputStream stream = fileZip.getInputStream(entry);
+					ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+					int b;
+					while ((b = stream.read()) != -1) outStream.write(b);
+					entryBytes.put(entry.toString(), outStream.toByteArray());
+					stream.close();
+					outStream.flush();
+					outStream.close();
+				} catch (Throwable err) {
+					err.printStackTrace();
+				}
+			});
+		} catch (Throwable err) {
+			err.printStackTrace();
+		}
+	}
+
 	public static void downloadDepJustURL(String url) {
 		String name = url.substring(url.lastIndexOf("/") + 1);
 		try {
 			dependencyManager.addFromURL("libraries" + File.separator + name + "," + url);
 			File file = new File("libraries" + File.separator + name);
-			try {
-				ZipFile fileZip = new ZipFile(file);
-				Stream<ZipEntry> entryStream = (Stream<ZipEntry>) fileZip.stream();
-				HashMap<String, byte[]> entryBytes = new HashMap<>();
-				classFiles.put(file.getAbsoluteFile(), entryBytes);
-				entryStream.forEach((entry) -> {
-					if (entry.isDirectory()) return;
-					InputStream stream = null;
-					ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-					try {
-						stream = fileZip.getInputStream(entry);
-						int b;
-						while ((b = stream.read()) != -1) outStream.write(b);
-					} catch (Throwable ignored) {
-					}
-					entryBytes.put(entry.toString(), outStream.toByteArray());
-					if (stream != null) {
-						try {
-							stream.close();
-						} catch (Throwable err) {
-							err.printStackTrace();
-						}
-					}
-					try {
-						outStream.flush();
-						outStream.close();
-					} catch (Throwable ignored) {
-					}
-				});
-			} catch (Throwable ignored) {
-				ignored.printStackTrace();
-			}
+			readZip(file);
 		} catch (Throwable err) {
 			FlameLauncher.downloadDep(name, url);
 		}
@@ -477,7 +439,7 @@ public class FlameLauncher {
 		Path targetDirPath = Paths.get(targetDir);
 		try (ZipFile zipFile = new ZipFile(zipFilename)) {
 			zipFile.stream()
-					.parallel() // enable multi-threading
+					.parallel()
 					.forEach(e -> unzipEntry(zipFile, e, targetDirPath, fileV));
 		} catch (IOException e) {
 			throw new RuntimeException("Error opening zip file '" + zipFilename + "': " + e, e);
@@ -505,37 +467,6 @@ public class FlameLauncher {
 	public static void downloadDep(String name, String url) {
 		dependencyManager.addFromURL("libraries" + File.separator + name + "," + url);
 		File file = new File("libraries" + File.separator + name);
-		try {
-			ZipFile fileZip = new ZipFile(file);
-			Stream<ZipEntry> entryStream = (Stream<ZipEntry>) fileZip.stream();
-			HashMap<String, byte[]> entryBytes = new HashMap<>();
-			classFiles.put(file.getAbsoluteFile(), entryBytes);
-			entryStream.forEach((entry) -> {
-				if (entry.isDirectory()) return;
-				InputStream stream = null;
-				ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-				try {
-					stream = fileZip.getInputStream(entry);
-					int b;
-					while ((b = stream.read()) != -1) outStream.write(b);
-				} catch (Throwable ignored) {
-				}
-				entryBytes.put(entry.toString(), outStream.toByteArray());
-				if (stream != null) {
-					try {
-						stream.close();
-					} catch (Throwable err) {
-						err.printStackTrace();
-					}
-				}
-				try {
-					outStream.flush();
-					outStream.close();
-				} catch (Throwable ignored) {
-				}
-			});
-		} catch (Throwable ignored) {
-			ignored.printStackTrace();
-		}
+		readZip(file);
 	}
 }
