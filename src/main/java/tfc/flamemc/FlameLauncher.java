@@ -290,7 +290,7 @@ public class FlameLauncher {
 				end = "dynlib";
 			} else {
 				download = "linux";
-				end = "dll";
+				end = "so";
 			}
 			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-" + download + ".jar", true);
 			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.2.2/lwjgl-glfw-3.2.2-natives-" + download + ".jar", true);
