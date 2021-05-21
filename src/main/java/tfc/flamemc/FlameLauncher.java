@@ -33,7 +33,7 @@ public class FlameLauncher {
 							new File(dir + File.separator + "build.gradle").exists()
 					);
 	
-	public static boolean isServer = false;
+//	public static boolean isServer = false;
 	
 	public static ArrayList<Class<?>> lockedClasses = new ArrayList<>();
 	
@@ -67,7 +67,8 @@ public class FlameLauncher {
 	public static final FlameLog field = new FlameLog();
 	
 	protected static final ArrayList<String> additionalURLs = new ArrayList<>();
-	
+
+	//TODO: I'll leave this here: after client is done, we need to reimplement server
 	public static void main(String[] args) {
 		FlameConfig.field = field;
 		field.append("Starting up FlameMC\n");
@@ -75,10 +76,10 @@ public class FlameLauncher {
 		if (isDev) dir = dir + File.separator + "run";
 		
 		List<String> argsLists = Arrays.asList(args);
-		if (argsLists.contains("--serverDev")) {
-			dir = System.getProperty("user.dir") + File.separator + "server" + File.separator;
-			isServer = true;
-		}
+//		if (argsLists.contains("--serverDev")) {
+//			dir = System.getProperty("user.dir") + File.separator + "server" + File.separator;
+//			isServer = true;
+//		}
 		
 		JFrame frame = null;
 		
@@ -97,22 +98,20 @@ public class FlameLauncher {
 			actualArgs.add("--version");
 			actualArgs.add(version);
 		} else {
-			actualArgs.clear();
-			
 			System.out.println("Found some args: " + Arrays.toString(args) + ".");
 			
 			if (argsLists.contains("--version")) version = argsLists.get(argsLists.indexOf("--version") + 1);
 			if (argsLists.contains("--gameDir")) gameDir = argsLists.get(argsLists.indexOf("--gameDir") + 1);
 			if (argsLists.contains("--main_class")) {
 				main_class = argsLists.get(argsLists.indexOf("--main_class") + 1);
-				if (main_class.contains("MinecraftServer")) isServer = true;
+//				if (main_class.contains("MinecraftServer")) isServer = true;
 			}
 			
-			if (isServer) {
-				argsLists.remove("--serverDev");
-				argsLists.remove("--main_class");
-				argsLists.remove(argsLists.indexOf("--main_class") + 1);
-			}
+//			if (isServer) {
+//				argsLists.remove("--serverDev");
+//				argsLists.remove("--main_class");
+//				argsLists.remove(argsLists.indexOf("--main_class") + 1);
+//			}
 			actualArgs.addAll(argsLists);
 		}
 		if (!actualArgs.contains("--assetIndex")) {
@@ -198,10 +197,11 @@ public class FlameLauncher {
 			frame = new JFrame("Flame MC log: " + version);
 			frame.add(field);
 			String finalVersion = version;
+			boolean finalSave_log = save_log;
 			frame.addWindowListener(new WindowAdapter() {
 				@Override
 				public void windowClosed(WindowEvent e) {
-					exit(null, true, dir, finalVersion);
+					exit(null, finalSave_log, dir, finalVersion);
 				}
 			});
 			frame.setSize(1000, 1000);
@@ -210,7 +210,6 @@ public class FlameLauncher {
 		
 		try {
 			lockedClasses.add(Class.forName("tfc.flamemc.FlameLauncher"));
-			lockedClasses.add(Class.forName("tfc.flamemc.FlameTextArea"));
 			lockedClasses.add(Class.forName("tfc.flame.IFlameMod"));
 			lockedClasses.add(Class.forName("tfc.flame.FlameConfig"));
 			lockedClasses.add(Class.forName("tfc.flame.FlameURLLoader"));
@@ -254,23 +253,21 @@ public class FlameLauncher {
 					});
 				}
 			}
-			
+
 			URL[] urls = new URL[mods.size() + 1 + additionalURLs.size()];
-			
-			if (!isServer) {
-				urls[0] = new File(dir + File.separator + "versions" + File.separator + version + File.separator + "" + version + ".jar").toURL();
-			}
-			
+
+			urls[0] = new File(dir + File.separator + "versions" + File.separator + version + File.separator + "" + version + ".jar").toURL();
+
 			for (int i = 0; i < mods.size(); i++) {
 				String s = mods.get(i);
 				urls[i + 1] = new File(s).toURL();
 			}
-			
+
 			for (int i = 0; i < additionalURLs.size(); i++) {
 				String s = additionalURLs.get(i);
 				urls[i + mods.size() + 1] = new File(s).toURL();
 			}
-			
+
 			loader = new FlameURLLoader(urls, FlameLauncher.class.getClassLoader());
 			loader.classDefiner = (name, bytes) -> {
 				name = name.replace(".", "/") + ".class";
@@ -311,37 +308,43 @@ public class FlameLauncher {
 			loader1 = new FlameLoader(loader);
 			dependencyManager = new Manager(loader);
 
-			if (isServer) {
-				loader.addURL(new URL("file:\\" + dir + File.separator + "server.jar"));
+//			if (isServer) {
+//				loader.addURL(new URL("file:\\" + dir + File.separator + "server.jar"));
+//			} else {
+			HashMap<String, Boolean> depMap = new HashMap<>();
+			String os = System.getProperty("os.name").toLowerCase();
+			String download;
+			String end;
+			if (os.contains("win")) {
+				download = "windows";
+				end = "dll";
+			} else if (os.contains("mac")) {
+				download = "macos";
+				end = "dynlib";
 			} else {
-				HashMap<String, Boolean> depMap = new HashMap<>();
-				String os = System.getProperty("os.name").toLowerCase();
-				String download;
-				if (os.contains("win")) {
-					download = "windows";
-				} else if (os.contains("mac")) {
-					download = "macos";
-				} else {
-					download = "linux";
-				}
-				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-" + download + ".jar", true);
-				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.2.2/lwjgl-glfw-3.2.2-natives-" + download + ".jar", true);
-				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-opengl/3.2.2/lwjgl-opengl-3.2.2-natives-" + download + ".jar", true);
-				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-stb/3.2.2/lwjgl-stb-3.2.2-natives-" + download + ".jar", true);
-				depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-openal/3.2.2/lwjgl-openal-3.2.2-natives-" + download + ".jar", true);
-				depMap.put("https://libraries.minecraft.net/com/mojang/brigadier/1.0.17/brigadier-1.0.17.jar", false);
-				depMap.put("https://libraries.minecraft.net/com/mojang/datafixerupper/2.0.24/datafixerupper-2.0.24.jar", false);
-				depMap.forEach((dep, unzip) -> {
-					String fileName = dep.substring(dep.lastIndexOf("/") + 1);
-					downloadDepJustURL(dep);
-					if (unzip) {
-						try {
-							unzip(System.getProperty("user.dir") + File.separator + "libraries" + File.separator, System.getProperty("user.dir") + File.separator + "libraries" + File.separator + fileName, (n) -> n.endsWith(".dll"));
-							Files.delete(Paths.get(System.getProperty("user.dir") + File.separator + "libraries" + File.separator + fileName));
-						} catch (Throwable ignored) {}
-					}
-				});
+				download = "linux";
+				end = "dll";
 			}
+			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-" + download + ".jar", true);
+			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.2.2/lwjgl-glfw-3.2.2-natives-" + download + ".jar", true);
+			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-opengl/3.2.2/lwjgl-opengl-3.2.2-natives-" + download + ".jar", true);
+			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-stb/3.2.2/lwjgl-stb-3.2.2-natives-" + download + ".jar", true);
+			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-openal/3.2.2/lwjgl-openal-3.2.2-natives-" + download + ".jar", true);
+			depMap.put("https://libraries.minecraft.net/com/mojang/brigadier/1.0.17/brigadier-1.0.17.jar", false);
+			depMap.put("https://libraries.minecraft.net/com/mojang/datafixerupper/2.0.24/datafixerupper-2.0.24.jar", false);
+			depMap.forEach((dep, unzip) -> {
+				String fileName = dep.substring(dep.lastIndexOf("/") + 1);
+				downloadDepJustURL(dep);
+				if (unzip) {
+					try {
+						unzip(System.getProperty("user.dir") + File.separator + "libraries" + File.separator, System.getProperty("user.dir") + File.separator + "libraries" + File.separator + fileName, (n) -> n.endsWith("." + end));
+						Files.delete(Paths.get(System.getProperty("user.dir") + File.separator + "libraries" + File.separator + fileName));
+					} catch (Throwable ignored) {
+					}
+				}
+			});
+
+			//}
 
 			field.append("Locking FlameMC classes\n");
 			lockedClasses.forEach(c -> {
