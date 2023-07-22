@@ -1,7 +1,5 @@
 package tfc.flamemc;
 
-import tfc.flame.FlameConfig;
-
 import javax.swing.*;
 import java.io.File;
 import java.util.*;
@@ -107,18 +105,5 @@ public class FlameExternalLauncher {
 			}
 		}
 		return paths;
-	}
-	
-	private static void logError(Throwable err) {
-		StringBuilder s = new StringBuilder();
-		FlameLauncher.field.append("\n\n");
-		s.append("Flame encountered an error:\n");
-		s.append(err.getClass().getName()).append(": ").append(err.getLocalizedMessage()).append("\n");
-		for (StackTraceElement element : err.getStackTrace()) {
-			s.append(element.toString()).append("\n");
-		}
-//		try{Thread.sleep(2000);}catch(Throwable err2){}
-		FlameLauncher.field.append(s.toString());
-		err.getStackTrace();
 	}
 }
