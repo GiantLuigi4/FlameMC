@@ -128,6 +128,8 @@ public class Utils {
 		public String mainClass;
 		public AssetIndex assetIndex;
 		public String type;
+		public String minecraftArguments;
+		public Utils.Arguments arguments;
 		
 		public static class AssetIndex {
 			public String id;

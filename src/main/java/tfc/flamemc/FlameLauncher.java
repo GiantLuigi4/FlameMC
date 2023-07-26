@@ -1,7 +1,7 @@
 package tfc.flamemc;
 
 import com.github.lorenzopapi.Utils;
-import com.google.gson.Gson;
+import org.json.JSONObject;
 import tfc.flame.loader.IFlameLoader;
 import tfc.flame.loader.util.JDKLoader;
 
@@ -17,6 +17,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -57,27 +58,39 @@ public class FlameLauncher {
 		field.append("Starting up FlameMC\n");
 
 		if (isDev) dir = dir + File.separator + "run";
-		
-		Gson gson = new Gson();
-		Utils.MinecraftVersionMeta versionsJSON = gson.fromJson(Utils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json"), Utils.MinecraftVersionMeta.class);
-		if (args.length == 0) System.out.println("WARN: No args found, defaulting to version " + versionsJSON.latest.release + ".");
+		JSONObject versionsJSON = new JSONObject(Utils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json"));
 		
 		ArrayList<String> arguments = new ArrayList<>(Arrays.asList(args));
-		String version = arguments.contains("--version") ? arguments.get(arguments.indexOf("--version") + 1) : versionsJSON.latest.release;
-		Utils.MinecraftVersion versionJSON = null;
-		for (Utils.MinecraftVersionMeta.Version v : versionsJSON.versions)
-			if (Objects.equals(v.id, version))
-				versionJSON = gson.fromJson(Utils.readUrl(v.url), Utils.MinecraftVersion.class);
+		String gameDir = arguments.contains("--gameDir") ? arguments.get(arguments.indexOf("--gameDir") + 1) : dir;
+		String version = arguments.contains("--version") ? arguments.get(arguments.indexOf("--version") + 1) : versionsJSON.getJSONObject("latest").getString("release");
+		
+		JSONObject versionJSON = null;
+		for (Object v : versionsJSON.getJSONArray("versions")) {
+			if (((JSONObject) v).getString("id").equals(version))
+				versionJSON = new JSONObject(Utils.readUrl(((JSONObject) v).getString("url")));
+		}
 		if (versionJSON == null) throw new RuntimeException("WHAT?HOW?WHY?");
 		
-		String gameDir = arguments.contains("--gameDir") ? arguments.get(arguments.indexOf("--gameDir") + 1) : dir;
-		String main_class = arguments.contains("--main_class") ? arguments.get(arguments.indexOf("--main_class") + 1) : versionJSON.mainClass;
-		arguments.clear();
+		String main_class = arguments.contains("--main_class") ? arguments.get(arguments.indexOf("--main_class") + 1) : versionJSON.getString("mainClass");
 		
-		//TODO: instead of adding them all in such a messy way, we should try using the versionJSON.arguments field
-		arguments.addAll(Arrays.asList("--assetIndex", versionJSON.assetIndex.id, "--main_class", main_class, "--gameDir", dir, "--version", version, "--username", "FlameDev", "--assetsDir", Utils.findMCDir() + File.separator + "assets" + File.separator, "--accessToken", "PLEASE FLAME WORK I BEG YOU", "--uuid", UUID.randomUUID().toString(), "--userType", "mojang", "--versionType", versionJSON.type));
+		List<String> versionArgs = versionJSON.has("minecraftArguments") ? new ArrayList<>(Arrays.asList(versionJSON.getString("minecraftArguments").split(" "))) : new ArrayList<>();
+		if (versionArgs.isEmpty())
+			for (Object o : versionJSON.getJSONObject("arguments").getJSONArray("game"))
+				if (o instanceof String) versionArgs.add((String) o); //TODO: some arguments aren't captured, but I wouldn't worry about it now
 		
-		System.out.println("Args that will be used: " + arguments);
+		String stringArgs = String.join(" ", versionArgs)
+				                    .replace("$", "")
+				                    .replace("{auth_player_name}", "FlameDev")
+				                    .replace("{version_name}", version)
+				                    .replace("{game_directory}", gameDir)
+				                    .replaceAll("\\{assets_root}|\\{game_assets}", Utils.findMCDir() + File.separator + "assets" + File.separator)
+				                    .replace("{assets_index_name}", versionJSON.getJSONObject("assetIndex").getString("id"))
+				                    .replace("{auth_uuid}", UUID.randomUUID().toString())
+				                    .replaceAll("\\{auth_access_token}|\\{auth_session}", "PLEASE-FLAME-WORK-I-BEG-YOU")
+				                    .replace("{user_type}", "mojang")
+				                    .replace("{version_type}", versionJSON.getString("type"));
+		
+		if (args.length == 0) System.out.println("WARN: No args found, defaulting to version " + version + ".");
 		
 		File flame_config = new File(gameDir + File.separator + "flame_config" + File.separator + "tfc.flamemc.txt");
 		boolean log = false;
@@ -128,7 +141,7 @@ public class FlameLauncher {
 			}
 			
 			URL[] urls = new URL[mods.size() + 1 + additionalURLs.size()];
-			urls[0] = new File(dir + File.separator + "versions" + File.separator + version + File.separator + version + ".jar").toURL();
+			urls[0] = new URL("jar:file:" + new File(dir + File.separator + "versions" + File.separator + version + File.separator + version + ".jar").getPath() + "!/");
 			for (int i = 0; i < mods.size(); i++) {
 				String s = mods.get(i);
 				urls[i + 1] = new File(s).toURL();
@@ -158,13 +171,13 @@ public class FlameLauncher {
 				end = "so";
 			}
 			//TODO: again, instead of hardcoding these things we should retrieve them from the versionJSON
-			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-" + download + ".jar", true);
-			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.2.2/lwjgl-glfw-3.2.2-natives-" + download + ".jar", true);
-			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-opengl/3.2.2/lwjgl-opengl-3.2.2-natives-" + download + ".jar", true);
-			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-stb/3.2.2/lwjgl-stb-3.2.2-natives-" + download + ".jar", true);
-			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-openal/3.2.2/lwjgl-openal-3.2.2-natives-" + download + ".jar", true);
-			depMap.put("https://libraries.minecraft.net/com/mojang/brigadier/1.0.17/brigadier-1.0.17.jar", false);
-			depMap.put("https://libraries.minecraft.net/com/mojang/datafixerupper/2.0.24/datafixerupper-2.0.24.jar", false);
+//			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-" + download + ".jar", true);
+//			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.2.2/lwjgl-glfw-3.2.2-natives-" + download + ".jar", true);
+//			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-opengl/3.2.2/lwjgl-opengl-3.2.2-natives-" + download + ".jar", true);
+//			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-stb/3.2.2/lwjgl-stb-3.2.2-natives-" + download + ".jar", true);
+//			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-openal/3.2.2/lwjgl-openal-3.2.2-natives-" + download + ".jar", true);
+//			depMap.put("https://libraries.minecraft.net/com/mojang/brigadier/1.0.17/brigadier-1.0.17.jar", false);
+//			depMap.put("https://libraries.minecraft.net/com/mojang/datafixerupper/2.0.24/datafixerupper-2.0.24.jar", false);
 			depMap.forEach((dep, unzip) -> {
 				String fileName = dep.substring(dep.lastIndexOf("/") + 1);
 				downloadDepJustURL(dep);
@@ -201,9 +214,9 @@ public class FlameLauncher {
 			} catch (Throwable err) {
 				FlameConfig.logError(err);
 			}
-			gameArgs = new String[arguments.size()];
-			arguments.toArray(gameArgs);
-			Class<?> clazz = loader.loadClass("tfc.flamemc.ModInitalizer", false);
+			System.out.println("Args that will be used: " + stringArgs);
+			gameArgs = stringArgs.split(" ");
+			Class<?> clazz = loader.loadClass("tfc.flamemc.ModInitializer", false);
 			clazz.newInstance();
 			if (version.contains("fabric")) System.setProperty("fabric.gameJarPath", dir + File.separator + "versions" + File.separator + version + File.separator + version + ".jar");
 			loader
