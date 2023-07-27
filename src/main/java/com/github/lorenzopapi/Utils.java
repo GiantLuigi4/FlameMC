@@ -111,29 +111,12 @@ public class Utils {
 	}
 	
 	public static class MinecraftVersionMeta {
-	    public LatestVersion latest;
-	    public List<Version> versions;
-	
-	    public static class LatestVersion {
-	        public String release;
-	        public String snapshot;
-	    }
-	    public static class Version {
+		public List<Version> versions;
+		
+		public static class Version {
 	        public String id;
 	        public String url;
 	    }
-	}
-	
-	public static class MinecraftVersion {
-		public String mainClass;
-		public AssetIndex assetIndex;
-		public String type;
-		public String minecraftArguments;
-		public Utils.Arguments arguments;
-		
-		public static class AssetIndex {
-			public String id;
-		}
 	}
 	
 	public static class FlamedJson {

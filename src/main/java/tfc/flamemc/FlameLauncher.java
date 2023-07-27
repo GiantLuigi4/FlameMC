@@ -9,44 +9,25 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
-import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
 import java.util.List;
-import java.util.stream.Stream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
+import java.util.*;
 
 public class FlameLauncher {
 	private static String dir = System.getProperty("user.dir");
-	public static boolean isDev =
+	public static final boolean isDev =
 			new File(dir + File.separator + "src").exists() &&
 					(new File(dir + File.separator + "build").exists() ||
 							new File(dir + File.separator + "build.gradle").exists()
 					);
-	
-	public static ArrayList<Class<?>> lockedClasses = new ArrayList<>();
 	private static IFlameLoader loader;
 	public static final ArrayList<Object> modsList = new ArrayList<>();
-	private static final HashMap<File, HashMap<String, byte[]>> classFiles = new HashMap<>();
 	public static String[] gameArgs;
-	
-	public static byte[] getSourceFile(File file, String entryName) {
-		return classFiles.get(file.getAbsoluteFile()).get(entryName);
-	}
-	
-	public static File getJarForEntry(String name) {
-		for (File file : classFiles.keySet())
-			if (classFiles.get(file).containsKey(name))
-				return file;
-		return null;
-	}
-	
 	public static final TextArea field = new TextArea();
 	
 	protected static final ArrayList<String> additionalURLs = new ArrayList<>();
@@ -61,22 +42,22 @@ public class FlameLauncher {
 		JSONObject versionsJSON = new JSONObject(Utils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json"));
 		
 		ArrayList<String> arguments = new ArrayList<>(Arrays.asList(args));
-		String gameDir = arguments.contains("--gameDir") ? arguments.get(arguments.indexOf("--gameDir") + 1) : dir;
+		String gameDir = arguments.contains("--gameDir") ? arguments.get(arguments.indexOf("--gameDir") + 1) : (isDev ? dir : Utils.findMCDir());
 		String version = arguments.contains("--version") ? arguments.get(arguments.indexOf("--version") + 1) : versionsJSON.getJSONObject("latest").getString("release");
 		
 		JSONObject versionJSON = null;
-		for (Object v : versionsJSON.getJSONArray("versions")) {
+		for (Object v : versionsJSON.getJSONArray("versions"))
 			if (((JSONObject) v).getString("id").equals(version))
 				versionJSON = new JSONObject(Utils.readUrl(((JSONObject) v).getString("url")));
-		}
+		
 		if (versionJSON == null) throw new RuntimeException("WHAT?HOW?WHY?");
 		
-		String main_class = arguments.contains("--main_class") ? arguments.get(arguments.indexOf("--main_class") + 1) : versionJSON.getString("mainClass");
+		String mainClass = arguments.contains("--main_class") ? arguments.get(arguments.indexOf("--main_class") + 1) : versionJSON.getString("mainClass");
 		
 		List<String> versionArgs = versionJSON.has("minecraftArguments") ? new ArrayList<>(Arrays.asList(versionJSON.getString("minecraftArguments").split(" "))) : new ArrayList<>();
 		if (versionArgs.isEmpty())
 			for (Object o : versionJSON.getJSONObject("arguments").getJSONArray("game"))
-				if (o instanceof String) versionArgs.add((String) o); //TODO: some arguments aren't captured, but I wouldn't worry about it now
+				if (o instanceof String) versionArgs.add((String) o); //TODO: some conditional arguments aren't captured (I hate "rules"), but I wouldn't worry about it now
 		
 		String stringArgs = String.join(" ", versionArgs)
 				                    .replace("$", "")
@@ -92,18 +73,18 @@ public class FlameLauncher {
 		
 		if (args.length == 0) System.out.println("WARN: No args found, defaulting to version " + version + ".");
 		
-		File flame_config = new File(gameDir + File.separator + "flame_config" + File.separator + "tfc.flamemc.txt");
+		File flameConfig = new File(gameDir + File.separator + "flame_config" + File.separator + "tfc.flamemc.txt");
 		boolean log = false;
 		boolean save_log = true;
 		try {
-			if (!flame_config.exists()) {
-				flame_config.getParentFile().mkdirs();
-				flame_config.createNewFile();
-				FileWriter writer = new FileWriter(flame_config);
+			if (!flameConfig.exists()) {
+				flameConfig.getParentFile().mkdirs();
+				flameConfig.createNewFile();
+				FileWriter writer = new FileWriter(flameConfig);
 				writer.write("log_window:false\nsave_log:true\n");
 				writer.close();
 			} else {
-				Scanner sc = new Scanner(flame_config);
+				Scanner sc = new Scanner(flameConfig);
 				while (sc.hasNextLine()) {
 					String line = sc.nextLine().toLowerCase();
 					if (line.startsWith("log_window:")) log = Boolean.parseBoolean(line.replace("log_window:", ""));
@@ -130,33 +111,6 @@ public class FlameLauncher {
 		}
 		
 		try {
-			//TODO add the locked classes (I guess?)
-			
-			ArrayList<String> mods = new ArrayList<>();
-			File modsFolder = new File(gameDir + File.separator + "flame_mods");
-			modsFolder.mkdirs();
-			for (File modFile : Objects.requireNonNull(modsFolder.listFiles())) {
-				mods.add(modFile.getPath());
-				readZip(modFile);
-			}
-			
-			URL[] urls = new URL[mods.size() + 1 + additionalURLs.size()];
-			urls[0] = new URL("jar:file:" + new File(dir + File.separator + "versions" + File.separator + version + File.separator + version + ".jar").getPath() + "!/");
-			for (int i = 0; i < mods.size(); i++) {
-				String s = mods.get(i);
-				urls[i + 1] = new File(s).toURL();
-			}
-			for (int i = 0; i < additionalURLs.size(); i++) {
-				String s = additionalURLs.get(i);
-				urls[i + mods.size() + 1] = new File(s).toURL();
-			}
-
-			loader = JDKLoader.createLoader(urls);
-			
-//			if (isServer) {
-//				loader.addURL(new URL("file:\\" + dir + File.separator + "server.jar"));
-//			} else {
-			HashMap<String, Boolean> depMap = new HashMap<>();
 			String os = System.getProperty("os.name").toLowerCase();
 			String download;
 			String end;
@@ -164,63 +118,78 @@ public class FlameLauncher {
 				download = "windows";
 				end = "dll";
 			} else if (os.contains("mac")) {
-				download = "macos";
+				download = "osx";
 				end = "dynlib";
 			} else {
 				download = "linux";
 				end = "so";
 			}
-			//TODO: again, instead of hardcoding these things we should retrieve them from the versionJSON
-//			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-" + download + ".jar", true);
-//			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-glfw/3.2.2/lwjgl-glfw-3.2.2-natives-" + download + ".jar", true);
-//			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-opengl/3.2.2/lwjgl-opengl-3.2.2-natives-" + download + ".jar", true);
-//			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-stb/3.2.2/lwjgl-stb-3.2.2-natives-" + download + ".jar", true);
-//			depMap.put("https://libraries.minecraft.net/org/lwjgl/lwjgl-openal/3.2.2/lwjgl-openal-3.2.2-natives-" + download + ".jar", true);
-//			depMap.put("https://libraries.minecraft.net/com/mojang/brigadier/1.0.17/brigadier-1.0.17.jar", false);
-//			depMap.put("https://libraries.minecraft.net/com/mojang/datafixerupper/2.0.24/datafixerupper-2.0.24.jar", false);
-			depMap.forEach((dep, unzip) -> {
-				String fileName = dep.substring(dep.lastIndexOf("/") + 1);
-				downloadDepJustURL(dep);
-				if (unzip) {
-					try {
-						Utils.unzip(System.getProperty("user.dir") + File.separator + "libraries" + File.separator, System.getProperty("user.dir") + File.separator + "libraries" + File.separator + fileName, (n) -> n.endsWith("." + end));
-						Files.delete(Paths.get(System.getProperty("user.dir") + File.separator + "libraries" + File.separator + fileName));
-					} catch (Throwable ignored) {}
-				}
-			});
+			
+			ArrayList<String> mods = new ArrayList<>();
+			File modsFolder = new File(gameDir + File.separator + "flame_mods");
+			modsFolder.mkdirs();
+			for (File modFile : Objects.requireNonNull(modsFolder.listFiles())) mods.add(modFile.getPath());
+			
+			List<URL> urlsList = new ArrayList<>();
+			urlsList.add(new URL("jar:file:" + new File(gameDir + File.separator + "versions" + File.separator + version + File.separator + version + ".jar").getPath() + "!/"));
+			for (String s : mods) urlsList.add(new File(s).toURL());
+			for (String s : additionalURLs) urlsList.add(new File(s).toURL());
 
-			//}
-
-			field.append("Locking FlameMC classes\n");
-			lockedClasses.forEach(c -> {
-				field.append(c.getName() + '\n');
-				try {
-					loader.loadClass(c.getName(), false);
-				} catch (ClassNotFoundException ignored) {
+			//TODO: put libraries in their own folder? (Instead of putting them all in the one big libraries folder?)
+			HashMap<String, Boolean> depMap = new HashMap<>();
+			for (Object l : versionJSON.getJSONArray("libraries")) {
+				if (l instanceof JSONObject) {
+					JSONObject library = (JSONObject) l;
+					System.out.println("Adding library " + library.getString("name"));
+					JSONObject downloads = library.getJSONObject("downloads");
+					//TODO let's not care about rules for now (they'll become like super important for 1.13+ (I hate Mojang))
+//					if (library.has("rules"))
+					if (downloads.has("artifact")) depMap.put(downloads.getJSONObject("artifact").getString("url"), false);
+					else if (downloads.has("classifiers") && downloads.getJSONObject("classifiers").has("natives-" + download)) depMap.put(downloads.getJSONObject("classifiers").getJSONObject("natives-" + download).getString("url"), true);
 				}
-			});
-			field.append("Locked FlameMC classes\n");
-
-			try {
-				for (String s : mods) {
-					File fi1 = new File(s);
-					try {
-						Object mod = loader.loadClass("entries." + fi1.getName().split("-")[0].replace("-", "").replace(".zip", "").replace(".jar", "") + ".Main", false).newInstance();
-						modsList.add(mod);
-					} catch (Throwable err) {
-						FlameConfig.logError(err);
-					}
-				}
-			} catch (Throwable err) {
-				FlameConfig.logError(err);
 			}
+			
+			String librariesFolder = gameDir + File.separator + "libraries";
+			depMap.forEach((dep, unzip) -> {
+				try {
+					String fileName = dep.substring(dep.lastIndexOf("/") + 1);
+					Utils.downloadFromUrl(dep, new File(librariesFolder, fileName).getAbsolutePath());
+					if (unzip) {
+						Utils.unzip(librariesFolder, librariesFolder + File.separator + fileName, (n) -> n.endsWith("." + end));
+						Files.delete(Paths.get(librariesFolder, fileName));
+					} else urlsList.add(new URL("jar:file:" + new File(librariesFolder, fileName).getPath() + "!/"));
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			});
+			
+			// TODO: I love java hacks, but I think there is a better way to do this
+			{
+				System.setProperty("java.library.path", System.getProperty("java.library.path") + ":" + librariesFolder);
+				Field fieldSysPath = ClassLoader.class.getDeclaredField("sys_paths");
+				fieldSysPath.setAccessible(true);
+				fieldSysPath.set(null, null);
+				System.out.println(System.getProperty("java.library.path"));
+			}
+			
+			System.setProperty("org.lwjgl.librarypath", new File(librariesFolder).getAbsolutePath());
+			URL[] urls = new URL[urlsList.size()];
+			urlsList.toArray(urls);
+			loader = JDKLoader.createLoader(urls, FlameLauncher.class.getClassLoader(), true);
+			Thread.currentThread().setContextClassLoader((ClassLoader) loader);
+	
+			for (String s : mods) {
+				Object mod = loader.loadClass("entries." + new File(s).getName().split("-")[0].replace("-", "").replace(".zip", "").replace(".jar", "") + ".Main", false).newInstance();
+				modsList.add(mod);
+			}
+			
 			System.out.println("Args that will be used: " + stringArgs);
 			gameArgs = stringArgs.split(" ");
 			Class<?> clazz = loader.loadClass("tfc.flamemc.ModInitializer", false);
 			clazz.newInstance();
-			if (version.contains("fabric")) System.setProperty("fabric.gameJarPath", dir + File.separator + "versions" + File.separator + version + File.separator + version + ".jar");
+			if (version.contains("fabric")) System.setProperty("fabric.gameJarPath", gameDir + File.separator + "versions" + File.separator + version + File.separator + version + ".jar");
 			loader
-					.loadClass(main_class, true)
+					.loadClass(mainClass, true)
 					.getMethod("main", String[].class)
 					.invoke(null, (Object) gameArgs);
 		} catch (Throwable err) {
@@ -233,58 +202,20 @@ public class FlameLauncher {
 	
 	private static void exit(JFrame f, Throwable err, boolean save_log, String dir, String version) {
 		if (f != null) f.dispose();
-		else {
-			if (save_log) {
-				try {
-					File fi = new File(dir + File.separator + "flame_logs" + File.separator + version);
-					if (!fi.exists()) fi.mkdirs();
-					fi = new File(dir + File.separator + "flame_logs" + File.separator + version + File.separator + System.nanoTime() + ".txt");
-					fi.createNewFile();
-					FileWriter writer = new FileWriter(fi);
+		if (save_log) {
+			try {
+				File log = new File(dir + File.separator + "flame_logs" + File.separator + version + File.separator + FlameConfig.nanoTime + ".txt");
+				if (!log.exists()) {
+					log.getParentFile().mkdirs();
+					log.createNewFile();
+					FileWriter writer = new FileWriter(log);
 					writer.write(field.getText());
 					writer.close();
-				} catch (Throwable ignored) {
 				}
+			} catch (Throwable ignored) {
 			}
 		}
+		
 		if (err != null) throw new RuntimeException(err);
-	}
-
-	public static void readZip(File f) {
-		try {
-			ZipFile fileZip = new ZipFile(f);
-			Stream<ZipEntry> entryStream = (Stream<ZipEntry>) fileZip.stream();
-			HashMap<String, byte[]> entryBytes = new HashMap<>();
-			classFiles.put(f.getAbsoluteFile(), entryBytes);
-			entryStream.forEach((entry) -> {
-				try {
-					if (entry.isDirectory()) return;
-					InputStream stream = fileZip.getInputStream(entry);
-					ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-					int b;
-					while ((b = stream.read()) != -1) outStream.write(b);
-					entryBytes.put(entry.toString(), outStream.toByteArray());
-					stream.close();
-					outStream.flush();
-					outStream.close();
-				} catch (Throwable err) {
-					err.printStackTrace();
-				}
-			});
-			fileZip.close();
-		} catch (Throwable err) {
-			err.printStackTrace();
-		}
-	}
-	
-	public static void downloadDepJustURL(String url) {
-		downloadDep(url, url.substring(url.lastIndexOf("/") + 1));
-	}
-	
-	public static void downloadDep(String url, String name) {
-		//TODO: deps
-		//dependencyManager.addFromURL("libraries" + File.separator + name + "," + url);
-		File file = new File("libraries" + File.separator + name);
-		readZip(file);
 	}
 }

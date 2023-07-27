@@ -4,6 +4,7 @@ import java.awt.*;
 
 public class FlameConfig {
 	public static TextArea field = null;
+	public static long nanoTime = System.nanoTime();
 	
 	public static void logError(Throwable err) {
 		StringBuilder s = new StringBuilder();
