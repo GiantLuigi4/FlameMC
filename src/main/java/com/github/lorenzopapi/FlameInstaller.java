@@ -158,14 +158,17 @@ public class FlameInstaller {
             Utils.unzip(tmpDir.getPath(), new File(getInstallerJar()).getPath(), name -> (name.startsWith("tfc/") && name.endsWith(".class")));
             log.append("\nUnzipping finished");
         }
-
-        net.lingala.zip4j.ZipFile zipFile = new net.lingala.zip4j.ZipFile(outputJar);
-        log.append("\nZipping FlameMC");
-        File f = new File(tmpDir + File.separator + "tfc");
-        f.mkdirs();
-        zipFile.addFolder(f);
-        log.append("\nZipping finished");
-
+        
+        {
+            net.lingala.zip4j.ZipFile zipFile = new net.lingala.zip4j.ZipFile(outputJar);
+            log.append("\nZipping FlameMC");
+            File f = new File(tmpDir + File.separator + "tfc");
+            f.mkdirs();
+            zipFile.addFolder(f);
+            log.append("\nZipping finished");
+        }
+        
+        //TODO: check if this has to be rewritten
         if (!jsonOut.exists()) {
             log.append("\nWriting Json");
             Utils.FlamedJson launchJson = new Utils.FlamedJson(versionNumber + "-flame", versionNumber, "tfc.flamemc.FlameLauncher");

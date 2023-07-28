@@ -13,7 +13,6 @@ import java.io.FileWriter;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.*;
 
@@ -30,26 +29,26 @@ public class FlameLauncher {
 	public static void main(String[] args) {
 		FlameConfig.field = field;
 		field.append("Starting up FlameMC\n");
-
+		
 		JSONObject versionsJSON = new JSONObject(Utils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json"));
 		
 		ArrayList<String> arguments = new ArrayList<>(Arrays.asList(args));
 		String gameDir = arguments.contains("--gameDir") ? arguments.get(arguments.indexOf("--gameDir") + 1) : Utils.findMCDir();
-		String version = arguments.contains("--version") ? arguments.get(arguments.indexOf("--version") + 1) : versionsJSON.getJSONObject("latest").getString("release");
+		String version = (arguments.contains("--version") ? arguments.get(arguments.indexOf("--version") + 1) : versionsJSON.getJSONObject("latest").getString("release")) + (Utils.isDev ? "-flame" : ""); //TODO: eh?
 		
 		JSONObject versionJSON = null;
 		for (Object v : versionsJSON.getJSONArray("versions"))
-			if (((JSONObject) v).getString("id").equals(version))
+			if (((JSONObject) v).getString("id").equals(version.replace("-flame", "")))
 				versionJSON = new JSONObject(Utils.readUrl(((JSONObject) v).getString("url")));
-		
 		if (versionJSON == null) throw new RuntimeException("WHAT?HOW?WHY?");
 		
 		String mainClass = arguments.contains("--main_class") ? arguments.get(arguments.indexOf("--main_class") + 1) : versionJSON.getString("mainClass");
 		
+		//TODO: some conditional arguments aren't captured (I hate s"rules"), but I wouldn't worry about it now
 		List<String> versionArgs = versionJSON.has("minecraftArguments") ? new ArrayList<>(Arrays.asList(versionJSON.getString("minecraftArguments").split(" "))) : new ArrayList<>();
 		if (versionArgs.isEmpty())
 			for (Object o : versionJSON.getJSONObject("arguments").getJSONArray("game"))
-				if (o instanceof String) versionArgs.add((String) o); //TODO: some conditional arguments aren't captured (I hate "rules"), but I wouldn't worry about it now
+				if (o instanceof String) versionArgs.add((String) o);
 		
 		String stringArgs = String.join(" ", versionArgs)
 				                    .replace("$", "")
@@ -110,7 +109,7 @@ public class FlameLauncher {
 				download = "windows";
 				end = "dll";
 			} else if (os.contains("mac")) {
-				download = "osx";
+				download = "osx"; //TODO: this sometimes becomes macos (I hate everything)
 				end = "dynlib";
 			} else {
 				download = "linux";
@@ -132,24 +131,41 @@ public class FlameLauncher {
 			for (Object l : versionJSON.getJSONArray("libraries")) {
 				if (l instanceof JSONObject) {
 					JSONObject library = (JSONObject) l;
-					field.append("Adding library " + library.getString("name") + "\n");
-					JSONObject downloads = library.getJSONObject("downloads");
-					//TODO let's not care about rules for now (they'll become like super important for 1.13+ (I hate Mojang))
-//					if (library.has("rules"))
-					if (downloads.has("artifact")) depMap.put(downloads.getJSONObject("artifact").getString("url"), false);
-					else if (downloads.has("classifiers") && downloads.getJSONObject("classifiers").has("natives-" + download)) depMap.put(downloads.getJSONObject("classifiers").getJSONObject("natives-" + download).getString("url"), true);
+					boolean hasRules = library.has("rules");
+					boolean forThisOS = true;
+					if (hasRules) {
+						for (Object r : library.getJSONArray("rules")) {
+							JSONObject rule = (JSONObject) r;
+							if (rule.has("action") && rule.has("os")) {
+								boolean A = rule.getString("action").equals("allow");
+								boolean B = !rule.getJSONObject("os").has("name") || rule.getJSONObject("os").getString("name").equals(download);
+								boolean C = !rule.getJSONObject("os").has("version") || rule.getJSONObject("os").getString("name").equals(System.getProperty("os.version"));
+								forThisOS = A == (B && C);
+							}
+						}
+					}
+					if (forThisOS) {
+						field.append("Found library " + library.getString("name") + "\n");
+						JSONObject downloads = library.getJSONObject("downloads");
+						if (library.has("natives")) depMap.put(downloads.getJSONObject("classifiers").getJSONObject(library.getJSONObject("natives").getString(download)).getString("url"), true);
+						else if (downloads.has("artifact")) depMap.put(downloads.getJSONObject("artifact").getString("url"), false);
+					}
 				}
 			}
 			
-			String librariesFolder = gameDir + File.separator + "libraries";
+			String librariesFolder = gameDir + File.separator + "libraries" + File.separator + version;
 			depMap.forEach((dep, unzip) -> {
 				try {
 					String fileName = dep.substring(dep.lastIndexOf("/") + 1);
-					Utils.downloadFromUrl(dep, new File(librariesFolder, fileName).getAbsolutePath());
-					if (unzip) {
-						Utils.unzip(librariesFolder, librariesFolder + File.separator + fileName, (n) -> n.endsWith("." + end));
-						Files.delete(Paths.get(librariesFolder, fileName));
-					} else urlsList.add(new URL("jar:file:" + new File(librariesFolder, fileName).getPath() + "!/"));
+					File lib = new File(librariesFolder, fileName);
+					if (!lib.exists()) {
+						Utils.downloadFromUrl(dep, lib.getAbsolutePath());
+						if (unzip) {
+							Utils.unzip(librariesFolder, lib.getAbsolutePath(), (n) -> n.endsWith("." + end));
+							Files.delete(lib.toPath());
+						}
+					}
+					if (lib.exists()) urlsList.add(new URL("jar:file:" + lib.getPath() + "!/"));
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -179,7 +195,7 @@ public class FlameLauncher {
 			gameArgs = stringArgs.split(" ");
 			Class<?> clazz = loader.loadClass("tfc.flamemc.ModInitializer", false);
 			clazz.newInstance();
-			if (version.contains("fabric")) System.setProperty("fabric.gameJarPath", Utils.findVersionsDir() + File.separator + version + File.separator + version + ".jar");
+			//if (version.contains("fabric")) System.setProperty("fabric.gameJarPath", Utils.findVersionsDir() + File.separator + version + File.separator + version + ".jar");
 			loader
 					.loadClass(mainClass, true)
 					.getMethod("main", String[].class)
