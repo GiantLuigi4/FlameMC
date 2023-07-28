@@ -1,6 +1,5 @@
 package tfc.flamemc;
 
-import com.github.lorenzopapi.Utils;
 import org.json.JSONObject;
 import tfc.flame.loader.IFlameLoader;
 import tfc.flame.loader.util.JDKLoader;
@@ -19,12 +18,6 @@ import java.util.List;
 import java.util.*;
 
 public class FlameLauncher {
-	private static String dir = System.getProperty("user.dir");
-	public static final boolean isDev =
-			new File(dir + File.separator + "src").exists() &&
-					(new File(dir + File.separator + "build").exists() ||
-							new File(dir + File.separator + "build.gradle").exists()
-					);
 	private static IFlameLoader loader;
 	public static final ArrayList<Object> modsList = new ArrayList<>();
 	public static String[] gameArgs;
@@ -38,11 +31,10 @@ public class FlameLauncher {
 		FlameConfig.field = field;
 		field.append("Starting up FlameMC\n");
 
-		if (isDev) dir = dir + File.separator + "run";
 		JSONObject versionsJSON = new JSONObject(Utils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json"));
 		
 		ArrayList<String> arguments = new ArrayList<>(Arrays.asList(args));
-		String gameDir = arguments.contains("--gameDir") ? arguments.get(arguments.indexOf("--gameDir") + 1) : (isDev ? dir : Utils.findMCDir());
+		String gameDir = arguments.contains("--gameDir") ? arguments.get(arguments.indexOf("--gameDir") + 1) : Utils.findMCDir();
 		String version = arguments.contains("--version") ? arguments.get(arguments.indexOf("--version") + 1) : versionsJSON.getJSONObject("latest").getString("release");
 		
 		JSONObject versionJSON = null;
@@ -71,7 +63,7 @@ public class FlameLauncher {
 				                    .replace("{user_type}", "mojang")
 				                    .replace("{version_type}", versionJSON.getString("type"));
 		
-		if (args.length == 0) System.out.println("WARN: No args found, defaulting to version " + version + ".");
+		if (args.length == 0) field.append("WARN: No args found, defaulting to version " + version + ".\n");
 		
 		File flameConfig = new File(gameDir + File.separator + "flame_config" + File.separator + "tfc.flamemc.txt");
 		boolean log = false;
@@ -131,16 +123,16 @@ public class FlameLauncher {
 			for (File modFile : Objects.requireNonNull(modsFolder.listFiles())) mods.add(modFile.getPath());
 			
 			List<URL> urlsList = new ArrayList<>();
-			urlsList.add(new URL("jar:file:" + new File(gameDir + File.separator + "versions" + File.separator + version + File.separator + version + ".jar").getPath() + "!/"));
+			urlsList.add(new URL("jar:file:" + new File(Utils.findVersionsDir(), version + File.separator + version + ".jar").getPath() + "!/"));
 			for (String s : mods) urlsList.add(new File(s).toURL());
 			for (String s : additionalURLs) urlsList.add(new File(s).toURL());
-
+			
 			//TODO: put libraries in their own folder? (Instead of putting them all in the one big libraries folder?)
 			HashMap<String, Boolean> depMap = new HashMap<>();
 			for (Object l : versionJSON.getJSONArray("libraries")) {
 				if (l instanceof JSONObject) {
 					JSONObject library = (JSONObject) l;
-					System.out.println("Adding library " + library.getString("name"));
+					field.append("Adding library " + library.getString("name") + "\n");
 					JSONObject downloads = library.getJSONObject("downloads");
 					//TODO let's not care about rules for now (they'll become like super important for 1.13+ (I hate Mojang))
 //					if (library.has("rules"))
@@ -169,7 +161,6 @@ public class FlameLauncher {
 				Field fieldSysPath = ClassLoader.class.getDeclaredField("sys_paths");
 				fieldSysPath.setAccessible(true);
 				fieldSysPath.set(null, null);
-				System.out.println(System.getProperty("java.library.path"));
 			}
 			
 			System.setProperty("org.lwjgl.librarypath", new File(librariesFolder).getAbsolutePath());
@@ -183,11 +174,12 @@ public class FlameLauncher {
 				modsList.add(mod);
 			}
 			
-			System.out.println("Args that will be used: " + stringArgs);
+			field.append("Args that will be used: " + stringArgs + "\n");
+			field.append("Urls used:" + urlsList);
 			gameArgs = stringArgs.split(" ");
 			Class<?> clazz = loader.loadClass("tfc.flamemc.ModInitializer", false);
 			clazz.newInstance();
-			if (version.contains("fabric")) System.setProperty("fabric.gameJarPath", gameDir + File.separator + "versions" + File.separator + version + File.separator + version + ".jar");
+			if (version.contains("fabric")) System.setProperty("fabric.gameJarPath", Utils.findVersionsDir() + File.separator + version + File.separator + version + ".jar");
 			loader
 					.loadClass(mainClass, true)
 					.getMethod("main", String[].class)

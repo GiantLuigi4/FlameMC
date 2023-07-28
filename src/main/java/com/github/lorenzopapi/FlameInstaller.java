@@ -2,22 +2,22 @@ package com.github.lorenzopapi;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonWriter;
+import org.json.JSONObject;
+import tfc.flamemc.Utils;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.Writer;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-//TODO: refactor when launcher is ready
 public class FlameInstaller {
-
     private static final FlameInstaller INSTANCE = new FlameInstaller();
 
     public String getInstallerJar() {
@@ -27,13 +27,10 @@ public class FlameInstaller {
         int to = urlStr.indexOf("!/");
         return urlStr.substring(from, to);
     }
-
-    public static String dir = new File(INSTANCE.getInstallerJar()).getParentFile().getAbsolutePath();
-    public static boolean isDev = new File(dir + File.separator + "gradlew.bat").exists();
-
+    
     public static void main(String[] args) throws UnsupportedLookAndFeelException {
         UIManager.setLookAndFeel(UIManager.getLookAndFeel());
-        String lastVersion = "1.16";
+        String lastVersion = "1.20.1";
         JFrame main = new JFrame("FlameMC Installer");
         JPanel panel = new JPanel();
 
@@ -41,7 +38,7 @@ public class FlameInstaller {
         JTextField versionPath = new JTextField();
         textPanel.setSize(640, 320);
         versionPath.setSize(640, 320);
-        versionPath.setText(findVersionsDir() + File.separator + lastVersion);
+        versionPath.setText(Utils.findVersionsDir() + File.separator + lastVersion);
         textPanel.add(versionPath);
 
         JPanel logPanel = new JPanel();
@@ -99,10 +96,8 @@ public class FlameInstaller {
         log.setText("");
         log.append("\nStart Installation");
         long start = System.nanoTime();
-        Gson gson = new Gson();
+        
         String versionNumber = new File(versionPath).getName();
-        String versions = Utils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json");
-        File flameInstaller = new File(getInstallerJar());
         File inputJar = new File(versionPath + File.separator + versionNumber + ".jar");
         File inputJson = new File(versionPath + File.separator + versionNumber + ".json");
         File outputFlameDir = new File(versionPath + "-flame");
@@ -110,13 +105,13 @@ public class FlameInstaller {
         if (!inputJson.exists()) {
             log.setForeground(Color.yellow);
             log.append("\nWARN: No json found for version " + versionNumber + "! The installer will try to download it now.\nBe sure to have internet connection");
-            Utils.MinecraftVersionMeta meta = gson.fromJson(versions, Utils.MinecraftVersionMeta.class);
+            JSONObject versionsJSON = new JSONObject(Utils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json"));
             boolean found = false;
-            for (Utils.MinecraftVersionMeta.Version version : meta.versions) {
-                if (version.id.equals(versionNumber)) {
+            for (Object v : versionsJSON.getJSONArray("versions")) {
+                if (((JSONObject) v).getString("id").equals(versionNumber)) {
                     inputJson.getParentFile().mkdirs();
                     inputJson.createNewFile();
-                    Utils.downloadFromUrl(version.url, inputJson.getPath());
+                    Utils.downloadFromUrl(((JSONObject) v).getString("url"), inputJson.getPath());
                     found = true;
                     log.append("\nJson downloaded!");
                     log.setForeground(Color.black);
@@ -129,24 +124,16 @@ public class FlameInstaller {
                 throw new IOException("Version not existing.");
             }
         }
-        if (!outputFlameDir.exists())
-            outputFlameDir.mkdirs();
+        if (!outputFlameDir.exists()) outputFlameDir.mkdirs();
         if (!inputJar.exists()) {
             log.setForeground(Color.yellow);
             log.append("\nWARN:No " + versionNumber + " version jar found, but Json exists! The installer will try to download the jar from web.\nBe sure to have internet connection.");
-            JsonParser parser = new JsonParser();
-            JsonElement tree = parser.parse(Files.newBufferedReader(inputJson.toPath()));
-
-            JsonObject downloads = Utils.readJsonObject(tree.getAsJsonObject(), s -> s.equals("downloads"));
-            JsonObject client = Utils.readJsonObject(Objects.requireNonNull(downloads).getAsJsonObject(), s -> s.equals("client"));
-            for (Map.Entry<String, JsonElement> clientEntry : Objects.requireNonNull(client).entrySet()) {
-                if (clientEntry.getKey().equals("url")) {
-                    Utils.downloadFromUrl(clientEntry.getValue().getAsString(), outputJar.getPath());
-                    downloadedFromUrl.set(true);
-                    log.setForeground(Color.black);
-                    log.append("\nDownloaded jar.");
-                    break;
-                }
+            JSONObject versionJSON = new JSONObject(Utils.readUrl(inputJson.toURL().toString()));
+            if (versionJSON.has("downloads") && versionJSON.getJSONObject("downloads").has("client")) {
+                Utils.downloadFromUrl(versionJSON.getJSONObject("downloads").getJSONObject("client").getString("url"), outputJar.getPath());
+                downloadedFromUrl.set(true);
+                log.setForeground(Color.black);
+                log.append("\nDownloaded jar.");
             }
         }
 
@@ -156,21 +143,20 @@ public class FlameInstaller {
         Utils.deleteDirectory(tmpDir);
         tmpDir.mkdirs();
 
-        if (!downloadedFromUrl.get() && outputJar.exists()) {
-            outputJar.delete();
-            outputJar.createNewFile();
+        if (!downloadedFromUrl.get()) {
+            if (outputJar.exists()) {
+                outputJar.delete();
+                outputJar.createNewFile();
+            }
+            log.append("\nCopying Minecraft jar...");
+            Files.copy(Files.newInputStream(inputJar.toPath()), outputJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            log.append("\nMinecraft jar copied");
         }
 
         if (downloadedFromUrl.get() || inputJar.length() == 0) {
             log.append("\nUnzipping flame...");
-            Utils.unzip(tmpDir.getPath(), flameInstaller.getPath(), name -> (name.startsWith("tfc/") && name.endsWith(".class")));
+            Utils.unzip(tmpDir.getPath(), new File(getInstallerJar()).getPath(), name -> (name.startsWith("tfc/") && name.endsWith(".class")));
             log.append("\nUnzipping finished");
-        }
-
-        if (!downloadedFromUrl.get()) {
-            log.append("\nCopying Minecraft jar...");
-            Files.copy(Files.newInputStream(inputJar.toPath()), outputJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            log.append("\nMinecraft jar copied");
         }
 
         net.lingala.zip4j.ZipFile zipFile = new net.lingala.zip4j.ZipFile(outputJar);
@@ -184,6 +170,7 @@ public class FlameInstaller {
             log.append("\nWriting Json");
             Utils.FlamedJson launchJson = new Utils.FlamedJson(versionNumber + "-flame", versionNumber, "tfc.flamemc.FlameLauncher");
             launchJson.arguments.game = new ArrayList<>();
+            launchJson.arguments.jvm = new ArrayList<>();
             String mavenUrl = "https://repo1.maven.org/maven2/";
             String asmRepo = "org.ow2.asm:asm";
             String asmVer = ":8.0.1";
@@ -191,27 +178,22 @@ public class FlameInstaller {
             launchJson.libraries.add(new Utils.Library(asmRepo + "-commons" + asmVer, mavenUrl));
             launchJson.libraries.add(new Utils.Library(asmRepo + "-tree" + asmVer, mavenUrl));
             launchJson.libraries.add(new Utils.Library(asmRepo + "-util" + asmVer, mavenUrl));
-            //launchJson.libraries.add(new Library("org.apache.bcel:bcel:6.0", mavenUrl));
             Writer writer = Files.newBufferedWriter(jsonOut.toPath());
+            Gson gson = new Gson();
             JsonElement tree = gson.toJsonTree(launchJson);
             JsonWriter jsonWriter = new JsonWriter(writer);
             gson.toJson(tree, jsonWriter);
+            writer.flush();
+            writer.close();
             log.append("\nJson written");
-        } else {
-            log.append("\nJson already generated");
-        }
+        } else log.append("\nJson already generated");
 
         Utils.deleteDirectory(tmpDir);
-        if (downloadedFromUrl.get())
-            Utils.deleteDirectory(inputJson.getParentFile());
+        if (downloadedFromUrl.get()) Utils.deleteDirectory(inputJson.getParentFile());
         long stop = System.nanoTime();
         log.append("\nDone!\n");
         long timePassed = (stop - start) / 1000000;
         log.append("\nInstallation took " + timePassed + " milliseconds.");
         log.append("\nYou can install another version if you want now.");
-    }
-    
-    public static File findVersionsDir() {
-        return new File((FlameInstaller.isDev ? FlameInstaller.dir + File.separator + "run" : Utils.findMCDir()) + File.separator + "versions");
     }
 }

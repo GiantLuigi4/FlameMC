@@ -1,7 +1,4 @@
-package com.github.lorenzopapi;
-
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+package tfc.flamemc;
 
 import java.io.*;
 import java.net.URL;
@@ -9,15 +6,20 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class Utils {
+	public static final boolean isDev =
+			new File("src").exists() &&
+					(new File("build").exists() ||
+							 new File("build.gradle").exists()
+					);
 	public static String readUrl(String urlString) {
 	    try {
 	        BufferedReader reader = new BufferedReader(new InputStreamReader(new URL(urlString).openStream()));
@@ -31,6 +33,10 @@ public class Utils {
 	        err.printStackTrace();
 	    }
 	    throw new RuntimeException("bad url");
+	}
+	
+	public static File findVersionsDir() {
+		return new File((isDev ? System.getProperty("user.dir") + File.separator + "run" : Utils.findMCDir()) + File.separator + "versions");
 	}
 	
 	public static void unzip(String targetDir, String zipFilename, Function<String, Boolean> fileV) {
@@ -79,15 +85,6 @@ public class Utils {
 	    }
 	}
 	
-	public static JsonObject readJsonObject(JsonObject object, Function<String, Boolean> validator) {
-	    for (Map.Entry<String, JsonElement> jsonEntry : object.entrySet()) {
-	        if (validator.apply(jsonEntry.getKey())) {
-	            return jsonEntry.getValue().getAsJsonObject();
-	        }
-	    }
-	    return null;
-	}
-	
 	public static void deleteDirectory(File f) throws IOException {
 	    if (f.exists())
 	        Files.walk(f.toPath())
@@ -97,6 +94,7 @@ public class Utils {
 	}
 	
 	public static String findMCDir() {
+		if (isDev) return new File(System.getProperty("user.dir"), "run").getAbsolutePath();
 		String home = System.getProperty("user.home", ".");
 		String os = System.getProperty("os.name").toLowerCase();
 		String mcDir;
@@ -110,20 +108,13 @@ public class Utils {
 		return mcDir;
 	}
 	
-	public static class MinecraftVersionMeta {
-		public List<Version> versions;
-		
-		public static class Version {
-	        public String id;
-	        public String url;
-	    }
-	}
-	
 	public static class FlamedJson {
 	    public String id;
+		public String time;
+		public String releaseTime;
+		public String type = "release";
+		public String mainClass;
 	    public String inheritsFrom;
-	    public String type = "release";
-	    public String mainClass;
 	    public Utils.Arguments arguments = new Utils.Arguments();
 	    public Utils.Downloads downloads = new Utils.Downloads();
 	    public List<Utils.Library> libraries = new ArrayList<>();
@@ -132,6 +123,8 @@ public class Utils {
 	        this.id = id;
 	        this.inheritsFrom = inheritsFrom;
 	        this.mainClass = mainClass;
+			this.releaseTime = OffsetDateTime.now().toString();
+			this.time = this.releaseTime;
 	    }
 	}
 	
@@ -147,6 +140,7 @@ public class Utils {
 	
 	public static class Arguments {
 	    public List<String> game = new ArrayList<>();
+		public List<String> jvm = new ArrayList<>();
 	}
 	
 	public static class Downloads {}
