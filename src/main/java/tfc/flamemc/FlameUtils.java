@@ -15,7 +15,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class FlameUtils {
-	public static final boolean isDev =
+	public static boolean isDev =
 			new File("src").exists() &&
 					(new File("build").exists() ||
 							 new File("build.gradle").exists()

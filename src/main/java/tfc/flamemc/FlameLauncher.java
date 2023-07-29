@@ -32,8 +32,8 @@ public class FlameLauncher {
 		JSONObject versionsJSON = new JSONObject(FlameUtils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json"));
 		
 		ArrayList<String> arguments = new ArrayList<>(Arrays.asList(args));
-		String gameDir = arguments.contains("--gameDir") ? arguments.get(arguments.indexOf("--gameDir") + 1) : FlameUtils.findMCDir();
-		String version = (arguments.contains("--version") ? arguments.get(arguments.indexOf("--version") + 1) : versionsJSON.getJSONObject("latest").getString("release")) + (FlameUtils.isDev ? "-flame" : ""); //TODO: eh?
+		String gameDir = keyOrDefault(arguments, "--gameDir", FlameUtils.findMCDir());
+		String version = keyOrDefault(arguments, "--version", versionsJSON.getJSONObject("latest").getString("release")) + (FlameUtils.isDev ? "-flame" : ""); //TODO: eh?
 		
 		JSONObject versionJSON = null;
 		for (Object v : versionsJSON.getJSONArray("versions"))
@@ -41,7 +41,7 @@ public class FlameLauncher {
 				versionJSON = new JSONObject(FlameUtils.readUrl(((JSONObject) v).getString("url")));
 		if (versionJSON == null) throw new RuntimeException("WHAT?HOW?WHY?");
 		
-		String mainClass = arguments.contains("--main_class") ? arguments.get(arguments.indexOf("--main_class") + 1) : versionJSON.getString("mainClass");
+		String mainClass = keyOrDefault(arguments, "--main_class", versionJSON.getString("mainClass"));
 		
 		//TODO: some conditional arguments aren't captured (I hate "rules"), but I wouldn't worry about it now
 		List<String> versionArgs = versionJSON.has("minecraftArguments") ? new ArrayList<>(Arrays.asList(versionJSON.getString("minecraftArguments").split(" "))) : new ArrayList<>();
@@ -51,15 +51,17 @@ public class FlameLauncher {
 		
 		String stringArgs = String.join(" ", versionArgs)
 				                    .replace("$", "")
-				                    .replace("{auth_player_name}", "FlameDev")
+				                    .replace("{auth_player_name}", keyOrDefault(arguments, "--username", "FlameDev"))
 				                    .replace("{version_name}", version)
 				                    .replace("{game_directory}", gameDir)
-				                    .replaceAll("\\{assets_root}|\\{game_assets}", FlameUtils.findMCDir() + File.separator + "assets" + File.separator)
-				                    .replace("{assets_index_name}", versionJSON.getJSONObject("assetIndex").getString("id"))
-				                    .replace("{auth_uuid}", UUID.randomUUID().toString())
-				                    .replaceAll("\\{auth_access_token}|\\{auth_session}", "PLEASE-FLAME-WORK-I-BEG-YOU")
+				                    .replaceAll("\\{assets_root}|\\{game_assets}", keyOrDefault(arguments, "--assetsDir", FlameUtils.findMCDir() + File.separator + "assets"))
+				                    .replace("{assets_index_name}", keyOrDefault(arguments, "--assetIndex", versionJSON.getJSONObject("assetIndex").getString("id")))
+				                    .replace("{auth_uuid}", keyOrDefault(arguments, "--uuid", UUID.randomUUID().toString()))
+				                    .replaceAll("\\{auth_access_token}|\\{auth_session}", keyOrDefault(arguments, "--accessToken", "PLEASE-FLAME-WORK-I-BEG-YOU"))
+									//TODO: keyOrDefault for these arguments too?
 				                    .replace("{user_type}", "mojang")
 				                    .replace("{version_type}", versionJSON.getString("type"));
+		gameArgs = stringArgs.split(" ");
 		
 		if (args.length == 0) FlameConfig.println("WARN: No args found, defaulting to version " + version);
 		
@@ -187,9 +189,8 @@ public class FlameLauncher {
 				modsList.add(mod);
 			}
 			
-			FlameConfig.println("Args that will be used: " + stringArgs);
 			FlameConfig.println("Urls used:" + urlsList);
-			gameArgs = stringArgs.split(" ");
+			FlameConfig.println("Args that will be used: " + stringArgs);
 			Class<?> clazz = loader.loadClass("tfc.flamemc.ModInitializer", false);
 			clazz.newInstance();
 			if (version.contains("fabric")) System.setProperty("fabric.gameJarPath", FlameUtils.findVersionsDir() + File.separator + version.replace("-flame", "") + File.separator + version.replace("-flame", "") + ".jar");
@@ -236,5 +237,9 @@ public class FlameLauncher {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public static String keyOrDefault(List<String> args, String key, String def) {
+		return args.contains(key) ? args.get(args.indexOf(key) + 1) : def;
 	}
 }
