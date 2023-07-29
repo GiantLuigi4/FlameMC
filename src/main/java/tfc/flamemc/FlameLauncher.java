@@ -20,31 +20,30 @@ public class FlameLauncher {
 	private static IFlameLoader loader;
 	public static final ArrayList<Object> modsList = new ArrayList<>();
 	public static String[] gameArgs;
-	public static final TextArea field = new TextArea();
 	
-	protected static final ArrayList<String> additionalURLs = new ArrayList<>();
+	protected static final ArrayList<URL> additionalURLs = new ArrayList<>();
 
 	//TODO: I'll leave this here: after client is done, we need to reimplement server
 	//TODO: I'm supposing that the client HAS access to the internet, will need to do some fallback in case this assumption is wrong.
 	public static void main(String[] args) {
-		FlameConfig.field = field;
-		field.append("Starting up FlameMC\n");
+		FlameConfig.field = new TextArea();
+		FlameConfig.println("Starting up FlameMC");
 		
-		JSONObject versionsJSON = new JSONObject(Utils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json"));
+		JSONObject versionsJSON = new JSONObject(FlameUtils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json"));
 		
 		ArrayList<String> arguments = new ArrayList<>(Arrays.asList(args));
-		String gameDir = arguments.contains("--gameDir") ? arguments.get(arguments.indexOf("--gameDir") + 1) : Utils.findMCDir();
-		String version = (arguments.contains("--version") ? arguments.get(arguments.indexOf("--version") + 1) : versionsJSON.getJSONObject("latest").getString("release")) + (Utils.isDev ? "-flame" : ""); //TODO: eh?
+		String gameDir = arguments.contains("--gameDir") ? arguments.get(arguments.indexOf("--gameDir") + 1) : FlameUtils.findMCDir();
+		String version = (arguments.contains("--version") ? arguments.get(arguments.indexOf("--version") + 1) : versionsJSON.getJSONObject("latest").getString("release")) + (FlameUtils.isDev ? "-flame" : ""); //TODO: eh?
 		
 		JSONObject versionJSON = null;
 		for (Object v : versionsJSON.getJSONArray("versions"))
 			if (((JSONObject) v).getString("id").equals(version.replace("-flame", "")))
-				versionJSON = new JSONObject(Utils.readUrl(((JSONObject) v).getString("url")));
+				versionJSON = new JSONObject(FlameUtils.readUrl(((JSONObject) v).getString("url")));
 		if (versionJSON == null) throw new RuntimeException("WHAT?HOW?WHY?");
 		
 		String mainClass = arguments.contains("--main_class") ? arguments.get(arguments.indexOf("--main_class") + 1) : versionJSON.getString("mainClass");
 		
-		//TODO: some conditional arguments aren't captured (I hate s"rules"), but I wouldn't worry about it now
+		//TODO: some conditional arguments aren't captured (I hate "rules"), but I wouldn't worry about it now
 		List<String> versionArgs = versionJSON.has("minecraftArguments") ? new ArrayList<>(Arrays.asList(versionJSON.getString("minecraftArguments").split(" "))) : new ArrayList<>();
 		if (versionArgs.isEmpty())
 			for (Object o : versionJSON.getJSONObject("arguments").getJSONArray("game"))
@@ -55,14 +54,14 @@ public class FlameLauncher {
 				                    .replace("{auth_player_name}", "FlameDev")
 				                    .replace("{version_name}", version)
 				                    .replace("{game_directory}", gameDir)
-				                    .replaceAll("\\{assets_root}|\\{game_assets}", Utils.findMCDir() + File.separator + "assets" + File.separator)
+				                    .replaceAll("\\{assets_root}|\\{game_assets}", FlameUtils.findMCDir() + File.separator + "assets" + File.separator)
 				                    .replace("{assets_index_name}", versionJSON.getJSONObject("assetIndex").getString("id"))
 				                    .replace("{auth_uuid}", UUID.randomUUID().toString())
 				                    .replaceAll("\\{auth_access_token}|\\{auth_session}", "PLEASE-FLAME-WORK-I-BEG-YOU")
 				                    .replace("{user_type}", "mojang")
 				                    .replace("{version_type}", versionJSON.getString("type"));
 		
-		if (args.length == 0) field.append("WARN: No args found, defaulting to version " + version + ".\n");
+		if (args.length == 0) FlameConfig.println("WARN: No args found, defaulting to version " + version);
 		
 		File flameConfig = new File(gameDir + File.separator + "flame_config" + File.separator + "tfc.flamemc.txt");
 		boolean log = false;
@@ -89,7 +88,7 @@ public class FlameLauncher {
 		
 		JFrame frame = log ? new JFrame("Flame MC log: " + version) : null;
 		if (log) {
-			frame.add(field);
+			frame.add(FlameConfig.field);
 			boolean finalSave_log = save_log;
 			frame.addWindowListener(new WindowAdapter() {
 				@Override
@@ -121,11 +120,6 @@ public class FlameLauncher {
 			modsFolder.mkdirs();
 			for (File modFile : Objects.requireNonNull(modsFolder.listFiles())) mods.add(modFile.getPath());
 			
-			List<URL> urlsList = new ArrayList<>();
-			urlsList.add(new URL("jar:file:" + new File(Utils.findVersionsDir(), version + File.separator + version + ".jar").getPath() + "!/"));
-			for (String s : mods) urlsList.add(new File(s).toURL());
-			for (String s : additionalURLs) urlsList.add(new File(s).toURL());
-			
 			//TODO: put libraries in their own folder? (Instead of putting them all in the one big libraries folder?)
 			HashMap<String, Boolean> depMap = new HashMap<>();
 			for (Object l : versionJSON.getJSONArray("libraries")) {
@@ -145,7 +139,7 @@ public class FlameLauncher {
 						}
 					}
 					if (forThisOS) {
-						field.append("Found library " + library.getString("name") + "\n");
+						FlameConfig.println("Found library " + library.getString("name"));
 						JSONObject downloads = library.getJSONObject("downloads");
 						if (library.has("natives")) depMap.put(downloads.getJSONObject("classifiers").getJSONObject(library.getJSONObject("natives").getString(download)).getString("url"), true);
 						else if (downloads.has("artifact")) depMap.put(downloads.getJSONObject("artifact").getString("url"), false);
@@ -153,23 +147,26 @@ public class FlameLauncher {
 				}
 			}
 			
+			List<URL> urlsList = new ArrayList<>();
+			urlsList.add(new URL("jar:file:" + new File(FlameUtils.findVersionsDir(), version + File.separator + version + ".jar").getPath() + "!/"));
+			
 			String librariesFolder = gameDir + File.separator + "libraries" + File.separator + version;
 			depMap.forEach((dep, unzip) -> {
 				try {
-					String fileName = dep.substring(dep.lastIndexOf("/") + 1);
-					File lib = new File(librariesFolder, fileName);
-					if (!lib.exists()) {
-						Utils.downloadFromUrl(dep, lib.getAbsolutePath());
-						if (unzip) {
-							Utils.unzip(librariesFolder, lib.getAbsolutePath(), (n) -> n.endsWith("." + end));
-							Files.delete(lib.toPath());
-						}
+					downloadDependencyJustUrl(dep, librariesFolder);
+					File lib = new File(librariesFolder, dep.substring(dep.lastIndexOf("/") + 1));
+					if (lib.exists() && unzip) {
+						FlameUtils.unzip(librariesFolder, lib.getAbsolutePath(), (n) -> n.endsWith("." + end));
+						Files.delete(lib.toPath());
+						additionalURLs.remove(new URL("jar:file:" + lib.getPath() + "!/"));
 					}
-					if (lib.exists()) urlsList.add(new URL("jar:file:" + lib.getPath() + "!/"));
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			});
+			
+			for (String s : mods) urlsList.add(new File(s).toURL());
+			urlsList.addAll(additionalURLs);
 			
 			// TODO: I love java hacks, but I think there is a better way to do this
 			{
@@ -190,12 +187,12 @@ public class FlameLauncher {
 				modsList.add(mod);
 			}
 			
-			field.append("Args that will be used: " + stringArgs + "\n");
-			field.append("Urls used:" + urlsList);
+			FlameConfig.println("Args that will be used: " + stringArgs);
+			FlameConfig.println("Urls used:" + urlsList);
 			gameArgs = stringArgs.split(" ");
 			Class<?> clazz = loader.loadClass("tfc.flamemc.ModInitializer", false);
 			clazz.newInstance();
-			//if (version.contains("fabric")) System.setProperty("fabric.gameJarPath", Utils.findVersionsDir() + File.separator + version + File.separator + version + ".jar");
+			if (version.contains("fabric")) System.setProperty("fabric.gameJarPath", FlameUtils.findVersionsDir() + File.separator + version.replace("-flame", "") + File.separator + version.replace("-flame", "") + ".jar");
 			loader
 					.loadClass(mainClass, true)
 					.getMethod("main", String[].class)
@@ -217,7 +214,7 @@ public class FlameLauncher {
 					log.getParentFile().mkdirs();
 					log.createNewFile();
 					FileWriter writer = new FileWriter(log);
-					writer.write(field.getText());
+					writer.write(FlameConfig.field.getText());
 					writer.close();
 				}
 			} catch (Throwable ignored) {
@@ -225,5 +222,19 @@ public class FlameLauncher {
 		}
 		
 		if (err != null) throw new RuntimeException(err);
+	}
+	
+	public static void downloadDependencyJustUrl(String url, String path) {
+		downloadDependency(url, path, url.substring(url.lastIndexOf("/") + 1));
+	}
+	
+	public static void downloadDependency(String url, String path, String fileName) {
+		try {
+			File lib = new File(path, fileName);
+			if (!lib.exists()) FlameUtils.downloadFromUrl(url, lib.getAbsolutePath());
+			additionalURLs.add(new URL("jar:file:" + lib.getPath() + "!/"));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 }
