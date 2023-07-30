@@ -15,24 +15,19 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class FlameUtils {
-	public static boolean isDev =
-			new File("src").exists() &&
-					(new File("build").exists() ||
-							 new File("build.gradle").exists()
-					);
+	public static boolean isDev = new File("src").exists() && (new File("build").exists() || new File("build.gradle").exists());
 	public static String readUrl(String urlString) {
 	    try {
 	        BufferedReader reader = new BufferedReader(new InputStreamReader(new URL(urlString).openStream()));
 	        StringBuilder buffer = new StringBuilder();
 	        int read;
 	        char[] chars = new char[1024];
-	        while ((read = reader.read(chars)) != -1)
-	            buffer.append(chars, 0, read);
+	        while ((read = reader.read(chars)) != -1) buffer.append(chars, 0, read);
 	        return buffer.toString();
 	    } catch (Throwable err) {
 	        err.printStackTrace();
 	    }
-	    throw new RuntimeException("bad url");
+	    throw new RuntimeException("Malformed URL " + urlString);
 	}
 	
 	public static File findVersionsDir() {
@@ -78,9 +73,7 @@ public class FlameUtils {
 	        FileOutputStream fileOS = new FileOutputStream(downloadFile);
 	        byte[] data = new byte[inputStream.available()];
 	        int byteContent;
-	        while ((byteContent = inputStream.read(data, 0, 1024)) != -1) {
-	            fileOS.write(data, 0, byteContent);
-	        }
+	        while ((byteContent = inputStream.read(data, 0, 1024)) != -1) fileOS.write(data, 0, byteContent);
 	        fileOS.close();
 	    }
 	}
@@ -98,14 +91,15 @@ public class FlameUtils {
 		String home = System.getProperty("user.home", ".");
 		String os = System.getProperty("os.name").toLowerCase();
 		String mcDir;
-		if (os.contains("win") && System.getenv("APPDATA") != null) {
-			mcDir = System.getenv("APPDATA") + File.separator + ".minecraft";
-		} else if (os.contains("mac")) {
-			mcDir = home + File.separator + "Library" + File.separator + "Application Support" + File.separator + "minecraft";
-		} else {
-			mcDir = home + File.separator + ".minecraft";
-		}
+		if (os.contains("win") && System.getenv("APPDATA") != null) mcDir = System.getenv("APPDATA") + File.separator + ".minecraft";
+		else if (os.contains("mac")) mcDir = home + File.separator + "Library" + File.separator + "Application Support" + File.separator + "minecraft";
+		else mcDir = home + File.separator + ".minecraft";
+		
 		return mcDir;
+	}
+	
+	public static String keyOrDefault(List<String> args, String key, String def) {
+		return args.contains(key) ? args.get(args.indexOf(key) + 1) : def;
 	}
 	
 	public static class FlamedJson {
