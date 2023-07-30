@@ -31,7 +31,7 @@ public class FlameLauncher {
 		
 		JSONObject versionsJSON = new JSONObject(FlameUtils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json"));
 		
-		String gameDir = FlameUtils.keyOrDefault(args, "--gameDir", FlameUtils.findMCDir());
+		String gameDir = FlameUtils.keyOrDefault(args, "--gameDir", FlameUtils.findRunDir());
 		String version = FlameUtils.keyOrDefault(args, "--version", versionsJSON.getJSONObject("latest").getString("release")) + (FlameUtils.isDev ? "-flame" : ""); //TODO: eh?
 		
 		JSONObject versionJSON = null;

@@ -89,7 +89,6 @@ public class FlameUtils {
 	}
 	
 	public static String findMCDir() {
-		if (isDev) return new File(System.getProperty("user.dir"), "run").getAbsolutePath();
 		String home = System.getProperty("user.home", ".");
 		String os = System.getProperty("os.name").toLowerCase();
 		String mcDir;
@@ -98,6 +97,11 @@ public class FlameUtils {
 		else mcDir = home + File.separator + ".minecraft";
 		
 		return mcDir;
+	}
+	
+	public static String findRunDir() {
+		if (isDev) return new File(System.getProperty("user.dir"), "run").getAbsolutePath();
+		else return findMCDir();
 	}
 	
 	public static String keyOrDefault(List<String> list, String key, String def) {
