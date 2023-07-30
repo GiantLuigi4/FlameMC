@@ -78,7 +78,7 @@ public class FlameLauncher {
 		if (!FlameUtils.hasInternetConnection() && !versionJSONFile.exists()) throw new RuntimeException("JSON doesn't exist and we cannot download it. Game cannot start.\nPlease enable your internet connection or place a JSON file in the version directory.");
 		JSONObject versionJSON;
 		try {
-			versionJSON = versionJSONFile.exists() ? new JSONObject(Files.readAllBytes(versionJSONFile.toPath())) : null;
+			versionJSON = versionJSONFile.exists() ? new JSONObject(new String(Files.readAllBytes(versionJSONFile.toPath()))) : null;
 		} catch (IOException e) {
 			FlameConfig.logError(e);
 			exit(frame, e, save_log, gameDir, version);

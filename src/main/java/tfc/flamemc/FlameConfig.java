@@ -7,6 +7,7 @@ public class FlameConfig {
 	public static long nanoTime = System.nanoTime();
 	
 	public static void println(String s) {
+		System.out.println(s);
 		field.append(s + "\n");
 	}
 	
