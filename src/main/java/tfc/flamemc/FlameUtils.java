@@ -1,8 +1,8 @@
 package tfc.flamemc;
 
 import java.io.*;
-import java.lang.reflect.Array;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -110,6 +110,18 @@ public class FlameUtils {
 	
 	public static String keyOrDefault(String[] arr, String key, String def) {
 		return keyOrDefault(Arrays.asList(arr), key, def);
+	}
+	
+	public static boolean hasInternetConnection() {
+		try {
+			URL url = new URL("https://www.google.com");
+			URLConnection c = url.openConnection();
+			c.connect();
+			return true;
+		} catch (Throwable err) {
+			System.out.println("Not connected to the internet.");
+			return false;
+		}
 	}
 	
 	public static class FlamedJson {
