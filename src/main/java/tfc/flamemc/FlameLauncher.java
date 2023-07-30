@@ -31,9 +31,8 @@ public class FlameLauncher {
 		
 		JSONObject versionsJSON = new JSONObject(FlameUtils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json"));
 		
-		ArrayList<String> arguments = new ArrayList<>(Arrays.asList(args));
-		String gameDir = FlameUtils.keyOrDefault(arguments, "--gameDir", FlameUtils.findMCDir());
-		String version = FlameUtils.keyOrDefault(arguments, "--version", versionsJSON.getJSONObject("latest").getString("release")) + (FlameUtils.isDev ? "-flame" : ""); //TODO: eh?
+		String gameDir = FlameUtils.keyOrDefault(args, "--gameDir", FlameUtils.findMCDir());
+		String version = FlameUtils.keyOrDefault(args, "--version", versionsJSON.getJSONObject("latest").getString("release")) + (FlameUtils.isDev ? "-flame" : ""); //TODO: eh?
 		
 		JSONObject versionJSON = null;
 		for (Object v : versionsJSON.getJSONArray("versions"))
@@ -41,7 +40,7 @@ public class FlameLauncher {
 				versionJSON = new JSONObject(FlameUtils.readUrl(((JSONObject) v).getString("url")));
 		if (versionJSON == null) throw new RuntimeException("WHAT?HOW?WHY?");
 		
-		String mainClass = FlameUtils.keyOrDefault(arguments, "--main_class", versionJSON.getString("mainClass"));
+		String mainClass = FlameUtils.keyOrDefault(args, "--main_class", versionJSON.getString("mainClass"));
 		
 		//TODO: some conditional arguments aren't captured (I hate "rules"), but I wouldn't worry about it now
 		List<String> versionArgs = versionJSON.has("minecraftArguments") ? new ArrayList<>(Arrays.asList(versionJSON.getString("minecraftArguments").split(" "))) : new ArrayList<>();
@@ -51,13 +50,13 @@ public class FlameLauncher {
 		
 		String stringArgs = String.join(" ", versionArgs)
 				                    .replace("$", "")
-				                    .replace("{auth_player_name}", FlameUtils.keyOrDefault(arguments, "--username", "FlameDev"))
+				                    .replace("{auth_player_name}", FlameUtils.keyOrDefault(args, "--username", "FlameDev"))
 				                    .replace("{version_name}", version)
 				                    .replace("{game_directory}", gameDir)
-				                    .replaceAll("\\{assets_root}|\\{game_assets}", FlameUtils.keyOrDefault(arguments, "--assetsDir", FlameUtils.findMCDir() + File.separator + "assets"))
-				                    .replace("{assets_index_name}", FlameUtils.keyOrDefault(arguments, "--assetIndex", versionJSON.getJSONObject("assetIndex").getString("id")))
-				                    .replace("{auth_uuid}", FlameUtils.keyOrDefault(arguments, "--uuid", UUID.randomUUID().toString()))
-				                    .replaceAll("\\{auth_access_token}|\\{auth_session}", FlameUtils.keyOrDefault(arguments, "--accessToken", "PLEASE-FLAME-WORK-I-BEG-YOU"))
+				                    .replaceAll("\\{assets_root}|\\{game_assets}", FlameUtils.keyOrDefault(args, "--assetsDir", FlameUtils.findMCDir() + File.separator + "assets"))
+				                    .replace("{assets_index_name}", FlameUtils.keyOrDefault(args, "--assetIndex", versionJSON.getJSONObject("assetIndex").getString("id")))
+				                    .replace("{auth_uuid}", FlameUtils.keyOrDefault(args, "--uuid", UUID.randomUUID().toString()))
+				                    .replaceAll("\\{auth_access_token}|\\{auth_session}", FlameUtils.keyOrDefault(args, "--accessToken", "PLEASE-FLAME-WORK-I-BEG-YOU"))
 									//TODO: keyOrDefault for these arguments too?
 				                    .replace("{user_type}", "mojang")
 				                    .replace("{version_type}", versionJSON.getString("type"));

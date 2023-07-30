@@ -1,6 +1,7 @@
 package tfc.flamemc;
 
 import java.io.*;
+import java.lang.reflect.Array;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -8,6 +9,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
@@ -98,8 +100,12 @@ public class FlameUtils {
 		return mcDir;
 	}
 	
-	public static String keyOrDefault(List<String> args, String key, String def) {
-		return args.contains(key) ? args.get(args.indexOf(key) + 1) : def;
+	public static String keyOrDefault(List<String> list, String key, String def) {
+		return list.contains(key) ? list.get(list.indexOf(key) + 1) : def;
+	}
+	
+	public static String keyOrDefault(String[] arr, String key, String def) {
+		return keyOrDefault(Arrays.asList(arr), key, def);
 	}
 	
 	public static class FlamedJson {
