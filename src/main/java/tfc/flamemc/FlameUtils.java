@@ -71,10 +71,10 @@ public class FlameUtils {
 	        f.getParentFile().mkdirs();
 	        f.createNewFile();
 	    }
-	    try (BufferedInputStream inputStream = new BufferedInputStream(new URL(url).openStream())) {
+	    try (BufferedInputStream inputStream = new BufferedInputStream(new URL(url).openStream(), 1024)) {
 	        FileOutputStream fileOS = new FileOutputStream(downloadFile);
 	        byte[] data = new byte[inputStream.available()];
-	        int byteContent;
+			int byteContent;
 	        while ((byteContent = inputStream.read(data, 0, 1024)) != -1) fileOS.write(data, 0, byteContent);
 	        fileOS.close();
 	    }
