@@ -25,7 +25,7 @@ public class FlameLauncher {
 	protected static final ArrayList<URL> additionalURLs = new ArrayList<>();
 
 	//TODO: I'll leave this here: after client is done, we need to reimplement server
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) {
 		FlameConfig.field = new TextArea();
 		FlameConfig.println("Starting up FlameMC");
 		boolean hasConnection = FlameUtils.hasInternetConnection();
@@ -37,9 +37,16 @@ public class FlameLauncher {
 		if (args.length == 0) FlameConfig.println("WARN: No args found, defaulting to version " + version);
 		
 		File versionJSONFile = new File(FlameUtils.findVersionsDir(), version + File.separator + version + ".json");
+		FlameConfig.println("Searching for JSON of path: " + versionJSONFile.getAbsolutePath());
 		if (!FlameUtils.hasInternetConnection() && !versionJSONFile.exists()) throw new RuntimeException("JSON doesn't exist and we cannot download it. Game cannot start.\nPlease enable your internet connection or place a JSON file in the version directory.");
 		
-		JSONObject versionJSON = versionJSONFile.exists() ? new JSONObject(Files.readAllBytes(versionJSONFile.toPath())) : null;
+		JSONObject versionJSON;
+		try {
+			versionJSON = versionJSONFile.exists() ? new JSONObject(Files.readAllBytes(versionJSONFile.toPath())) : null;
+		} catch (IOException e) {
+			FlameConfig.logError(e);
+			throw new RuntimeException(e);
+		}
 		if (versionJSON == null && versionsJSON != null)
 			for (Object v : versionsJSON.getJSONArray("versions"))
 				if (((JSONObject) v).getString("id").equals(version.replace("-flame", "")))
