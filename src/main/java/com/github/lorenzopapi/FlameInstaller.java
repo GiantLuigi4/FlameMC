@@ -1,8 +1,6 @@
 package com.github.lorenzopapi;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.stream.JsonWriter;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import tfc.flamemc.FlameUtils;
 
@@ -14,7 +12,7 @@ import java.io.Writer;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
+import java.time.OffsetDateTime;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FlameInstaller {
@@ -168,25 +166,28 @@ public class FlameInstaller {
             log.append("\nZipping finished");
         }
         
-        //TODO: check if this has to be rewritten
         if (!jsonOut.exists()) {
             log.append("\nWriting Json");
-            FlameUtils.FlamedJson launchJson = new FlameUtils.FlamedJson(versionNumber + "-flame", versionNumber, "tfc.flamemc.FlameLauncher");
-            launchJson.arguments.game = new ArrayList<>();
-            launchJson.arguments.jvm = new ArrayList<>();
-            String mavenUrl = "https://repo1.maven.org/maven2/";
+            JSONObject launchJSON = new JSONObject();
+            String currentTime = OffsetDateTime.now().toString();
             String asmRepo = "org.ow2.asm:asm";
-            String asmVer = ":8.0.1";
-            launchJson.libraries.add(new FlameUtils.Library(asmRepo + asmVer, mavenUrl));
-            launchJson.libraries.add(new FlameUtils.Library(asmRepo + "-commons" + asmVer, mavenUrl));
-            launchJson.libraries.add(new FlameUtils.Library(asmRepo + "-tree" + asmVer, mavenUrl));
-            launchJson.libraries.add(new FlameUtils.Library(asmRepo + "-util" + asmVer, mavenUrl));
+            String asmVer = ":9.5";
+            String mavenUrl = "https://repo1.maven.org/maven2/" + asmRepo.replaceAll("[.:]", "/") + "%s" + asmVer.replace(":", "/") + "/" + asmRepo.split(":")[1] + "%s" + asmVer.replaceAll(":", "-") + ".jar";
+            JSONArray libs = new JSONArray();
+            addLibrary(libs, asmRepo + asmVer, String.format(mavenUrl, "", ""));
+            addLibrary(libs, asmRepo + "-commons" + asmVer, String.format(mavenUrl, "-commons", "-commons"));
+            addLibrary(libs, asmRepo + "-tree" + asmVer, String.format(mavenUrl, "-tree", "-tree"));
+            addLibrary(libs, asmRepo + "-util" + asmVer, String.format(mavenUrl, "-util", "-util"));
+            launchJSON
+                    .put("id", versionNumber + "-flame")
+                    .put("inheritsFrom", versionNumber)
+                    .put("mainClass", "tfc.flamemc.FlameLauncher")
+                    .put("time", currentTime)
+                    .put("releaseTime", currentTime)
+                    .put("type", "release")
+                    .put("libraries", libs);
             Writer writer = Files.newBufferedWriter(jsonOut.toPath());
-            Gson gson = new Gson();
-            JsonElement tree = gson.toJsonTree(launchJson);
-            JsonWriter jsonWriter = new JsonWriter(writer);
-            gson.toJson(tree, jsonWriter);
-            writer.flush();
+            writer.write(launchJSON.toString());
             writer.close();
             log.append("\nJson written");
         } else log.append("\nJson already generated");
@@ -198,5 +199,9 @@ public class FlameInstaller {
         long timePassed = (stop - start) / 1000000;
         log.append("\nInstallation took " + timePassed + " milliseconds.");
         log.append("\nYou can install another version if you want now.");
+    }
+    
+    public static void addLibrary(JSONArray libs, String name, String url) {
+        libs.put(new JSONObject().put("name", name).put("downloads", new JSONObject().put("artifact", new JSONObject().put("url", url))));
     }
 }

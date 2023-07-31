@@ -7,8 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -73,7 +71,7 @@ public class FlameUtils {
 	    }
 	    try (BufferedInputStream inputStream = new BufferedInputStream(new URL(url).openStream(), 1024)) {
 	        FileOutputStream fileOS = new FileOutputStream(downloadFile);
-	        byte[] data = new byte[inputStream.available()];
+	        byte[] data = new byte[1024];
 			int byteContent;
 	        while ((byteContent = inputStream.read(data, 0, 1024)) != -1) fileOS.write(data, 0, byteContent);
 	        fileOS.close();
@@ -95,7 +93,6 @@ public class FlameUtils {
 		if (os.contains("win") && System.getenv("APPDATA") != null) mcDir = System.getenv("APPDATA") + File.separator + ".minecraft";
 		else if (os.contains("mac")) mcDir = home + File.separator + "Library" + File.separator + "Application Support" + File.separator + "minecraft";
 		else mcDir = home + File.separator + ".minecraft";
-		
 		return mcDir;
 	}
 	
@@ -123,41 +120,4 @@ public class FlameUtils {
 			return false;
 		}
 	}
-	
-	public static class FlamedJson {
-	    public String id;
-		public String time;
-		public String releaseTime;
-		public String type = "release";
-		public String mainClass;
-	    public String inheritsFrom;
-	    public FlameUtils.Arguments arguments = new FlameUtils.Arguments();
-	    public FlameUtils.Downloads downloads = new FlameUtils.Downloads();
-	    public List<FlameUtils.Library> libraries = new ArrayList<>();
-	
-	    public FlamedJson(String id, String inheritsFrom, String mainClass) {
-	        this.id = id;
-	        this.inheritsFrom = inheritsFrom;
-	        this.mainClass = mainClass;
-			this.releaseTime = OffsetDateTime.now().toString();
-			this.time = this.releaseTime;
-	    }
-	}
-	
-	public static class Library {
-	    public String name;
-	    public String url;
-	
-	    public Library(String name, String url) {
-	        this.name = name;
-	        this.url = url;
-	    }
-	}
-	
-	public static class Arguments {
-	    public List<String> game = new ArrayList<>();
-		public List<String> jvm = new ArrayList<>();
-	}
-	
-	public static class Downloads {}
 }

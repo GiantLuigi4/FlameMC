@@ -1,5 +1,6 @@
 package tfc.flamemc;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 import tfc.flame.loader.IFlameLoader;
 import tfc.flame.loader.util.JDKLoader;
@@ -55,8 +56,8 @@ public class FlameLauncher {
 			FlameConfig.logError(err);
 		}
 		
-		JSONObject versionsJSON = hasConnection ? new JSONObject(FlameUtils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json")) : null;
-		String version = FlameUtils.keyOrDefault(args, "--version", hasConnection ? versionsJSON.getJSONObject("latest").getString("release") : "1.20.1");
+		JSONObject allVersionsJSON = hasConnection ? new JSONObject(FlameUtils.readUrl("https://launchermeta.mojang.com/mc/game/version_manifest.json")) : null;
+		String version = FlameUtils.keyOrDefault(args, "--version", hasConnection ? allVersionsJSON.getJSONObject("latest").getString("release") : "1.20.1");
 		if (args.length == 0) FlameConfig.println("WARN: No args found, defaulting to version " + version);
 		
 		JFrame frame = log ? new JFrame("Flame MC log: " + version) : null;
@@ -82,10 +83,34 @@ public class FlameLauncher {
 		} catch (IOException e) {
 			FlameConfig.logError(e);
 			exit(frame, e, save_log, gameDir, version);
-			throw  new RuntimeException(e);
+			throw new RuntimeException(e);
 		}
-		if (versionJSON == null && versionsJSON != null)
-			for (Object v : versionsJSON.getJSONArray("versions"))
+		
+		boolean inheritsFrom = versionJSON != null && versionJSON.has("inheritsFrom");
+		JSONObject inheritedJSON;
+		try {
+			inheritedJSON = inheritsFrom ? new JSONObject(new String(Files.readAllBytes(new File(FlameUtils.findVersionsDir(), versionJSON.getString("inheritsFrom") + File.separator + versionJSON.getString("inheritsFrom") + ".json").toPath()))): null;
+		} catch (IOException e) {
+			FlameConfig.logError(e);
+			exit(frame, e, save_log, gameDir, version);
+			throw new RuntimeException(e);
+		}
+		
+		//TODO: String arguments
+		if (inheritedJSON != null) {
+			for (String key : inheritedJSON.keySet()) {
+				if (versionJSON.has(key)) {
+					Object value = versionJSON.get(key);
+					if (value instanceof JSONArray) {
+						for (Object o : versionJSON.getJSONArray(key)) inheritedJSON.append(key, o);
+					}
+				}
+			}
+			versionJSON = inheritedJSON;
+		}
+		
+		if (versionJSON == null && allVersionsJSON != null)
+			for (Object v : allVersionsJSON.getJSONArray("versions"))
 				if (((JSONObject) v).getString("id").equals(version.replace("-flame", "")))
 					versionJSON = new JSONObject(FlameUtils.readUrl(((JSONObject) v).getString("url")));
 		if (versionJSON == null) throw new RuntimeException("Version " + version + " not found. Please check if it exists.");
@@ -168,6 +193,7 @@ public class FlameLauncher {
 						additionalURLs.remove(new URL("jar:file:" + lib.getPath() + "!/"));
 					}
 				} catch (Exception e) {
+					FlameConfig.logError(e);
 					e.printStackTrace();
 				}
 			});
@@ -199,7 +225,7 @@ public class FlameLauncher {
 				FlameConfig.println("Loading " + name);
 			}
 			
-			FlameConfig.println("Urls used:" + urlsList);
+			FlameConfig.println("Urls used:" + Arrays.toString(urls));
 			FlameConfig.println("Args that will be used: " + stringArgs);
 			FlameConfig.println("Initializing mods");
 			loader.loadClass("tfc.flamemc.ModInitializer", false).newInstance();
@@ -242,7 +268,11 @@ public class FlameLauncher {
 			if (!lib.exists()) FlameUtils.downloadFromUrl(url, lib.getAbsolutePath());
 			additionalURLs.add(new URL("jar:file:" + lib.getPath() + "!/"));
 		} catch (Exception e) {
-			e.printStackTrace();
+			FlameConfig.logError(e);
 		}
+	}
+	
+	public static IFlameLoader getLoader() {
+		return loader;
 	}
 }
